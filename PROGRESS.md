@@ -15,7 +15,7 @@ Building M0 to M6 offline after an explicit operator override of the preflight h
 | M3 Qualify, map, find, gate 2 | DONE (offline; live fetch and person search deferred per BLOCKED.md) |
 | M4 Reveal and deliver | DONE (offline; live reveal stays off by design) |
 | M5 Polish | DONE |
-| M6 Ship ready | not started |
+| M6 Ship ready | DONE |
 
 ## M0, done
 
@@ -92,7 +92,18 @@ Deferred by design and by the blocked network: a live reveal that spends real cr
 
 Verified: 3 Playwright tests pass, web build clean, 193 unit tests pass, workspace typecheck clean.
 
-## Exact next step: M6 Ship ready
+## M6, done
+
+- `docker/compose.prod.yml` with db, migrate (one shot), web, worker, caddy (auto TLS), and a nightly pg_dump backup container. Validated with `docker compose config`.
+- `docker/Dockerfile.web` (Next standalone, copies the Prisma engine and schema so the standalone server finds the engine at runtime) and `docker/Dockerfile.worker`.
+- `docker/Caddyfile` with security headers, `docker/backup` (pg_dump, 14 day retention), `.dockerignore`.
+- `docs/DEPLOY.md`, `docs/RUNBOOK.md`, `docs/rocketreach-api-notes.md`, and `HANDOFF.md`.
+
+Verified: `docker compose -f docker/compose.prod.yml config` validates, the production web build succeeds, 193 unit tests pass, 91 percent pipeline line coverage, 3 Playwright tests pass, workspace typecheck clean.
+
+## Status: all milestones complete offline
+
+M0 through M6 are built, tested offline, committed, and delivered as git bundles. The three blockers in `BLOCKED.md` (missing env, blocked network, no push) remain the operator's to clear before a live run and before the branch can reach GitHub. `HANDOFF.md` has the full summary, the deferred live checks, and how to turn reveals on safely.
 
 Build the seven adapters (`RocketReachClient`, `OverpassClient`, `SerperClient`, `PlacesClient`, `ClaudeClient`, `SheetsClient`, `Mailer`) in `packages/pipeline`, each with a token bucket limiter, jittered retries, `Retry-After` handling, a `dryRun` mode, and `api_calls` logging. Wire the Settings page tests. The live RocketReach, Sheets, and Brevo checks cannot run in this session (blocked network), so M1 is built and unit tested against `msw` fixtures, and the live checks are deferred to a session with network per `BLOCKED.md`.
 

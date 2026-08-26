@@ -1,0 +1,40 @@
+# Web (Next.js standalone). Multi stage: install, build, run.
+FROM node:22-slim AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+RUN corepack enable
+# openssl is needed by the Prisma query engine at runtime.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+FROM base AS deps
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
+COPY packages/config/package.json packages/config/
+COPY packages/db/package.json packages/db/
+COPY packages/pipeline/package.json packages/pipeline/
+COPY apps/web/package.json apps/web/
+COPY apps/worker/package.json apps/worker/
+RUN pnpm install --frozen-lockfile
+
+FROM base AS build
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN pnpm --filter @dph/db generate
+# Standalone build for the web app.
+RUN pnpm --filter @dph/web build
+
+FROM base AS runner
+ENV NODE_ENV=production
+WORKDIR /app
+# Next standalone server and static assets.
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /app/apps/web/public ./apps/web/public
+# Prisma schema and the generated client with its query engine, so the
+# standalone server finds the engine at runtime.
+COPY --from=build /app/packages/db/prisma ./packages/db/prisma
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+CMD ["node", "apps/web/server.js"]

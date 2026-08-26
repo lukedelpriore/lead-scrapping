@@ -135,3 +135,14 @@ The spec's smoke test creates a request, runs it in demo mode, and opens Results
 
 **D40. Review approve and decline are server action forms, no client state.**
 Each row posts a small form to a server action, so the review queue works without shipping extra client JavaScript. The reveal itself stays gated by REVEAL_MODE off.
+
+## 2026-08-26, M6 ship ready
+
+**D41. Migrations run from a one shot compose service, not on web start.**
+Section 14 says migrations run on web start. The Next standalone runtime image is minimal and does not carry the Prisma CLI, so a dedicated `migrate` service (built from the worker image, which has the full toolchain) runs `prisma migrate deploy` before web and worker start, gated by `depends_on: service_completed_successfully`. The effect is the same: the schema is migrated before the app serves, and it is more robust than shelling out from the standalone server.
+
+**D42. The web runtime image copies the Prisma query engine.**
+The standalone build does not copy the Prisma engine next to the bundle, which fails at runtime. The web Dockerfile copies `node_modules/.prisma` and the Prisma schema into the runner and installs openssl, so the engine loads. This was the cause of the standalone start error seen during the M3 smoke test, which used `next start` with full node_modules instead.
+
+**D43. docs/rocketreach-api-notes.md is written but marked pending live validation.**
+Section 5 requires it. The live docs host was blocked, so the file records the Section 5.3 summary the client was coded against and states plainly that a network enabled session must validate the shapes against the live docs before real reveals.
