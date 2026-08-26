@@ -12,7 +12,7 @@ Building M0 to M6 offline after an explicit operator override of the preflight h
 | M0 Scaffold | DONE |
 | M1 Integrations | DONE (offline; live provider checks deferred per BLOCKED.md) |
 | M2 Requests, discover, gate 1 | DONE (offline; live discovery deferred per BLOCKED.md) |
-| M3 Qualify, map, find, gate 2 | not started |
+| M3 Qualify, map, find, gate 2 | DONE (offline; live fetch and person search deferred per BLOCKED.md) |
 | M4 Reveal and deliver | not started |
 | M5 Polish | not started |
 | M6 Ship ready | not started |
@@ -58,7 +58,21 @@ Verified: 140 tests pass (9 config, 131 pipeline), workspace typecheck clean, we
 
 Deferred (blocked network): a live Florida discovery that returns real Overpass and Serper venues. The job and the offline persist path both work; only the live fetch is blocked, per BLOCKED.md.
 
-## Exact next step: M3 Qualify, map, find, gate 2
+## M3, done (offline)
+
+- Rules classifier (`classify/rules.ts`): hosts_weddings, hosts_corporate, nonmember_events, ownership, group name, capacity, site contact, evidence, and confidence, matching Section 6.3. Same JSON shape as the Claude classifier.
+- Tier rules already in `tier.ts`. Group mapping and ranking in `find/rank.ts`.
+- Rules adjudicator (`find/adjudicate.ts`): scores results against the target and title hierarchy, rejects wrong employer, excluded titles, and wrong state, and picks primary and alternate with confidence and reason.
+- Search plan builder (`find/search-plan.ts`): the four ordered RocketReach person search queries per target.
+- Gate 2 (`find/gate2.ts`): checks suppression, delivered leads, and same run duplicates; marks duplicates with key and source so they never reach reveal.
+- Site fetcher adapter (`adapters/fetcher.ts`): internal event URL selection and Readability text extraction (pure parts unit tested).
+- Worker stages: qualify (fetch, classify, tier, persist) and find (search, adjudicate, gate 2, create candidates). Request detail page with the scorecard and Results, Review, Already have, Venues, and Log tabs.
+
+Verified offline against the database: a venue qualifies to tier 1 with capacity 300 and confidence 0.9; find creates a primary and an alternate; gate 2 marks a delivered contact as a duplicate with source delivered; zero credit ledger rows. The request detail page renders 167 ready candidates and 33 duplicates from the demo data.
+
+Deferred (blocked network): live site fetching and live RocketReach person search. The stages and the offline paths work; only the live fetch and search are blocked, per BLOCKED.md.
+
+## Exact next step: M4 Reveal and deliver
 
 Build the seven adapters (`RocketReachClient`, `OverpassClient`, `SerperClient`, `PlacesClient`, `ClaudeClient`, `SheetsClient`, `Mailer`) in `packages/pipeline`, each with a token bucket limiter, jittered retries, `Retry-After` handling, a `dryRun` mode, and `api_calls` logging. Wire the Settings page tests. The live RocketReach, Sheets, and Brevo checks cannot run in this session (blocked network), so M1 is built and unit tested against `msw` fixtures, and the live checks are deferred to a session with network per `BLOCKED.md`.
 

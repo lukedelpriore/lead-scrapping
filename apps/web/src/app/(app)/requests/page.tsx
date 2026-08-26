@@ -54,7 +54,11 @@ export default async function RequestsPage() {
                 const states = Array.isArray(r.states) ? (r.states as string[]) : [];
                 return (
                   <tr key={r.id}>
-                    <td>{r.name}</td>
+                    <td>
+                      <a href={`/requests/${r.id}`} style={{ color: "var(--navy)", fontWeight: 500 }}>
+                        {r.name}
+                      </a>
+                    </td>
                     <td>
                       <span className="label">{r.status}</span>
                     </td>

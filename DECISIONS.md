@@ -96,3 +96,17 @@ A source that fails, including a blocked network, is logged as a run event and t
 
 **D29. Run enqueues discovery on pg-boss; the web app sends, the worker processes.**
 The Run request action creates a run and sends a discover job. The worker owns processing. Both connect to the same Postgres, so no extra broker is needed. Live end to end processing needs the worker running and the network open, so it is exercised in a session that has both.
+
+## 2026-08-26, M3 qualify, map, find, gate 2
+
+**D30. Rules engines produce the exact Claude output shape.**
+`classifyByRules` and `adjudicateByRules` return the same fields as the Section 17 Claude prompts, so switching AI_MODE changes only which function runs. Both are pure and unit tested, so the default offline path is fully covered.
+
+**D31. Worker stages take already gathered data so they are testable offline.**
+`qualifyVenueByRules` takes fetched pages and `createCandidates` takes search results, both plus Prisma. The worker jobs do the live fetch and person search and call these. This let M3 be verified end to end against the database with fixtures while the network is blocked.
+
+**D32. Same run dedupe keeps the higher ranked occurrence.**
+Gate 2's SameRunSet records a candidate's keys only when it is kept as ready, so a later occurrence of the same person (under a venue and again under its group) is caught as a same run duplicate. Verified by test.
+
+**D33. next start warns under output standalone; the smoke test used next start.**
+`output: standalone` is set for the production image. `next start` prints a warning and the standalone server needs the Prisma query engine copied next to the bundle, which is a Dockerfile step in M6. For the in VM smoke tests, `next start` with the full node_modules is used and works. M6 copies the Prisma engine into the standalone image.
