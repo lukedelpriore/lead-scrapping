@@ -9,7 +9,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "lint": "next lint || echo \"lint skipped\""
+    "lint": "next lint || echo \"lint skipped\"",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@dph/config": "workspace:*",
@@ -31,6 +32,7 @@
     "@tailwindcss/postcss": "^4.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "@playwright/test": "1.55.0"
   }
 }

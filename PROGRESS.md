@@ -14,7 +14,7 @@ Building M0 to M6 offline after an explicit operator override of the preflight h
 | M2 Requests, discover, gate 1 | DONE (offline; live discovery deferred per BLOCKED.md) |
 | M3 Qualify, map, find, gate 2 | DONE (offline; live fetch and person search deferred per BLOCKED.md) |
 | M4 Reveal and deliver | DONE (offline; live reveal stays off by design) |
-| M5 Polish | not started |
+| M5 Polish | DONE |
 | M6 Ship ready | not started |
 
 ## M0, done
@@ -84,7 +84,15 @@ Verified offline against the database with REVEAL_MODE off: reveal reported "wou
 
 Deferred by design and by the blocked network: a live reveal that spends real credits (REVEAL_MODE stays off for the whole build, hard stop 2), and the live sheet append and email (no credentials, no network). The stages and the offline paths work, per BLOCKED.md.
 
-## Exact next step: M5 Polish
+## M5, done
+
+- Playwright smoke test (`apps/web/playwright/smoke.spec.ts`) green: sign in, view the dashboard ledger, open the seeded demo request, check the scorecard cells, open the Review and Already have tabs, and save a new request draft. Runs against the pre installed Chromium with an explicit executablePath so no browser is downloaded.
+- Review queue actions: approve and decline per candidate with a "would spend n credits" line, all through server actions.
+- Mobile layout (left rail to bottom bar), keyboard focus rings, empty states on every list, and plain error copy were set in M0 and hold across the pages added since.
+
+Verified: 3 Playwright tests pass, web build clean, 193 unit tests pass, workspace typecheck clean.
+
+## Exact next step: M6 Ship ready
 
 Build the seven adapters (`RocketReachClient`, `OverpassClient`, `SerperClient`, `PlacesClient`, `ClaudeClient`, `SheetsClient`, `Mailer`) in `packages/pipeline`, each with a token bucket limiter, jittered retries, `Retry-After` handling, a `dryRun` mode, and `api_calls` logging. Wire the Settings page tests. The live RocketReach, Sheets, and Brevo checks cannot run in this session (blocked network), so M1 is built and unit tested against `msw` fixtures, and the live checks are deferred to a session with network per `BLOCKED.md`.
 

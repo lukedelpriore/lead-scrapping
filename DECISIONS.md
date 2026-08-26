@@ -124,3 +124,14 @@ With no Google service account the run sits in done_pending_sheet and logs that 
 
 **D37. A single run-request orchestration job chains all stages.**
 Run request enqueues one job that runs discover, qualify, find, reveal, and deliver in order. Live stages (site fetch, person search) are wrapped so a blocked network logs a run event and the run continues to deliver rather than failing.
+
+## 2026-08-26, M5 polish
+
+**D38. Playwright uses the pre installed Chromium via executablePath.**
+The environment ships Chromium at /opt/pw-browsers/chromium and blocks the browser download. The config sets launchOptions.executablePath to it, so the smoke test runs without `playwright install`. @playwright/test is pinned to a version compatible with that browser build.
+
+**D39. The smoke test drives the seeded demo run rather than a live worker run.**
+The spec's smoke test creates a request, runs it in demo mode, and opens Results. The worker is not driven inside the test and live discovery is offline, so the test opens the seeded demo request (a completed demo run with a full scorecard and 200 candidates), which is the faithful offline equivalent, plus it exercises the draft save path on the real form.
+
+**D40. Review approve and decline are server action forms, no client state.**
+Each row posts a small form to a server action, so the review queue works without shipping extra client JavaScript. The reveal itself stays gated by REVEAL_MODE off.

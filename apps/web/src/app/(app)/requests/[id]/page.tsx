@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@dph/db";
 import { PageHeader } from "@/components/page-header";
 import { Scorecard, type StageCounts } from "@/components/scorecard";
+import { approveCandidate, declineCandidate } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -111,18 +112,69 @@ async function ReviewTab({ requestId }: { requestId: string }) {
     return <Empty text="Nothing waiting for review." />;
   }
   return (
-    <Table
-      head={["Name", "Title", "Employer", "Confidence", "Rank"]}
-      rows={candidates.map((c) => [
-        c.name,
-        c.title ?? "",
-        c.employer ?? "",
-        c.confidence.toFixed(2),
-        c.rank,
-      ])}
-    />
+    <div className="card" style={{ overflowX: "auto" }}>
+      <div style={{ padding: "10px 12px", fontSize: 13, color: "var(--muted)" }}>
+        Revealing selected contacts would spend {candidates.length} credits. Searching and dedupe are free.
+      </div>
+      <table className="dph-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Title</th>
+            <th>Employer</th>
+            <th className="dph-num">Confidence</th>
+            <th>Rank</th>
+            <th>Decision</th>
+          </tr>
+        </thead>
+        <tbody>
+          {candidates.map((c) => (
+            <tr key={c.id}>
+              <td>{c.name}</td>
+              <td>{c.title ?? ""}</td>
+              <td>{c.employer ?? ""}</td>
+              <td className="dph-num mono">{c.confidence.toFixed(2)}</td>
+              <td className="label">{c.rank}</td>
+              <td>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <form action={approveCandidate}>
+                    <input type="hidden" name="candidateId" value={c.id} />
+                    <input type="hidden" name="requestId" value={requestId} />
+                    <button type="submit" style={approveBtn}>Approve</button>
+                  </form>
+                  <form action={declineCandidate}>
+                    <input type="hidden" name="candidateId" value={c.id} />
+                    <input type="hidden" name="requestId" value={requestId} />
+                    <button type="submit" style={declineBtn}>Decline</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
+
+const approveBtn: React.CSSProperties = {
+  background: "var(--fairway)",
+  color: "#fff",
+  border: "none",
+  borderRadius: 6,
+  padding: "5px 10px",
+  fontSize: 12,
+  cursor: "pointer",
+};
+const declineBtn: React.CSSProperties = {
+  background: "#fff",
+  color: "var(--ink)",
+  border: "1px solid var(--card-border)",
+  borderRadius: 6,
+  padding: "5px 10px",
+  fontSize: 12,
+  cursor: "pointer",
+};
 
 async function AlreadyTab({ requestId }: { requestId: string }) {
   const dupes = await prisma.candidate.findMany({
