@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# build
+.next/
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# prisma
+packages/db/prisma/*.db
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# test
+coverage/
+
+# os
+.DS_Store
+
+# backups
+/backups/
+
+# playwright
+test-results/
+playwright-report/
+/apps/web/playwright/.cache/

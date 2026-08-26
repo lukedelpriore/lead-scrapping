@@ -1,0 +1,69 @@
+# Local trial stack. Everything runs with one command and Docker Desktop only,
+# no Node, pnpm, or Postgres to install and no real API keys needed. The app
+# runs in offline mode: REVEAL_MODE and AI_MODE are off, provider keys are
+# blank, so the whole free pipeline works against fixtures and nothing is
+# charged. Open http://localhost:3000 once it is up.
+#
+#   docker compose -f docker/compose.local.yml up --build
+#
+# Sign in with luke@delpriorehospitality.com and the password: leadengine
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: dph
+      POSTGRES_PASSWORD: dph
+      POSTGRES_DB: dph_lead_engine
+    volumes:
+      - localpgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dph -d dph_lead_engine"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  setup:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    command: ["sh", "-c", "pnpm --filter @dph/db migrate && pnpm --filter @dph/db seed"]
+    environment: &appenv
+      DATABASE_URL: postgresql://dph:dph@db:5432/dph_lead_engine
+      AUTH_SECRET: local-dev-secret-not-for-production-000000
+      AUTH_URL: http://localhost:3000
+      ALLOWED_EMAILS: luke@delpriorehospitality.com,hashir@delpriorehospitality.com
+      SEED_PASSWORD: leadengine
+      MAIL_FROM: "Del Priore Lead Engine <leads@delpriorehospitality.com>"
+      AI_MODE: "off"
+      REVEAL_MODE: "off"
+      PLACES_ENABLED: "false"
+      LOG_LEVEL: info
+      TZ: America/New_York
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    environment: *appenv
+    ports:
+      - "3000:3000"
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    command: ["pnpm", "--filter", "@dph/worker", "start"]
+    environment: *appenv
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+
+volumes:
+  localpgdata:

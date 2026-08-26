@@ -1,0 +1,19 @@
+{
+  "note": "Verified sample of real US counties for the priority states, used so discovery in stage 1 has seed data offline. The complete US Census county list loads via the county loader (M2) when the network policy allows a fetch from the Census. Do not treat this as the full list.",
+  "source": "well known county names, verified by hand",
+  "counties": {
+    "FL": ["Miami-Dade", "Broward", "Palm Beach", "Orange", "Hillsborough", "Duval", "Pinellas", "Lee", "Collier", "Sarasota"],
+    "TX": ["Harris", "Dallas", "Tarrant", "Bexar", "Travis", "Collin", "Denton", "Fort Bend", "El Paso", "Montgomery"],
+    "CA": ["Los Angeles", "San Diego", "Orange", "Riverside", "San Bernardino", "Santa Clara", "Alameda", "Sacramento", "Contra Costa", "Ventura"],
+    "NJ": ["Bergen", "Middlesex", "Essex", "Hudson", "Monmouth", "Ocean", "Morris", "Union", "Camden", "Somerset"],
+    "NY": ["Kings", "Queens", "New York", "Suffolk", "Bronx", "Nassau", "Westchester", "Erie", "Monroe", "Richmond"],
+    "IL": ["Cook", "DuPage", "Lake", "Will", "Kane", "McHenry", "Winnebago", "Madison", "St. Clair", "Champaign"],
+    "OH": ["Franklin", "Cuyahoga", "Hamilton", "Summit", "Montgomery", "Lucas", "Butler", "Stark", "Lorain", "Warren"],
+    "MI": ["Wayne", "Oakland", "Macomb", "Kent", "Genesee", "Washtenaw", "Ingham", "Ottawa", "Kalamazoo", "Livingston"],
+    "PA": ["Philadelphia", "Allegheny", "Montgomery", "Bucks", "Delaware", "Lancaster", "Chester", "York", "Berks", "Lehigh"],
+    "GA": ["Fulton", "Gwinnett", "Cobb", "DeKalb", "Chatham", "Cherokee", "Forsyth", "Henry", "Clayton", "Hall"],
+    "NC": ["Mecklenburg", "Wake", "Guilford", "Forsyth", "Cumberland", "Durham", "Buncombe", "Union", "New Hanover", "Gaston"],
+    "SC": ["Greenville", "Richland", "Charleston", "Horry", "Spartanburg", "Lexington", "York", "Berkeley", "Anderson", "Beaufort"],
+    "AZ": ["Maricopa", "Pima", "Pinal", "Yavapai", "Mohave", "Yuma", "Coconino", "Cochise", "Navajo", "Gila"]
+  }
+}

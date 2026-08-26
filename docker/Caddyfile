@@ -1,0 +1,18 @@
+# Caddy reverse proxy with automatic TLS. Section 14.
+# Set the domain and the ACME email through environment at deploy time.
+{$LEADS_DOMAIN:leads.delpriorehospitality.com} {
+	encode zstd gzip
+	reverse_proxy web:3000
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

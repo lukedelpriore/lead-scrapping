@@ -1,0 +1,210 @@
+@import "tailwindcss";
+
+/*
+  Design system, Section 10. A private operations console. Calm and exact.
+  Brass is used only where money is spent (credits). No gradients, no shadows.
+*/
+
+:root {
+  /* Palette */
+  --navy: #16283f; /* primary actions, active nav, headings on dark */
+  --fairway: #2f5d46; /* progress, success, completed stages */
+  --brass: #b8934a; /* credits only */
+  --stone: #eef0ec; /* app background */
+  --card: #ffffff;
+  --card-border: #d9ddd6;
+  --ink: #1b1f1d;
+  --muted: #5b6470;
+  --error: #b5473a;
+
+  --radius: 10px;
+  --rail-width: 232px;
+  --content-max: 1280px;
+
+  color-scheme: light;
+}
+
+@theme {
+  --color-navy: #16283f;
+  --color-fairway: #2f5d46;
+  --color-brass: #b8934a;
+  --color-stone: #eef0ec;
+  --color-card: #ffffff;
+  --color-cardborder: #d9ddd6;
+  --color-ink: #1b1f1d;
+  --color-muted: #5b6470;
+  --color-error: #b5473a;
+
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--stone);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Type scale 40 / 28 / 22 / 17 / 15 / 13 / 12 */
+.display-xl { font-family: var(--font-bricolage), sans-serif; font-weight: 600; font-size: 40px; line-height: 1.1; }
+.display-lg { font-family: var(--font-bricolage), sans-serif; font-weight: 600; font-size: 28px; line-height: 1.15; }
+.display-md { font-family: var(--font-bricolage), sans-serif; font-weight: 500; font-size: 22px; line-height: 1.2; }
+.heading { font-size: 17px; font-weight: 600; }
+.mono { font-family: var(--font-plex-mono), ui-monospace, monospace; font-size: 13px; }
+
+.label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Card */
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+}
+
+/* Focus, 2px Navy outline, 2px offset */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--navy);
+  outline-offset: 2px;
+}
+
+/* Motion, disabled under reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Skeleton loader */
+.skeleton {
+  background: linear-gradient(90deg, #e7eae4 25%, #f1f3ef 37%, #e7eae4 63%);
+  background-size: 400% 100%;
+  animation: skeleton 1.4s ease infinite;
+  border-radius: 6px;
+}
+@keyframes skeleton {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* App shell, Section 10.3. Left rail 232px on desktop, bottom bar on phone. */
+.dph-shell {
+  min-height: 100vh;
+  display: flex;
+}
+.dph-rail {
+  width: var(--rail-width);
+  min-width: var(--rail-width);
+  background: var(--navy);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.dph-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dph-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--card-border);
+  background: var(--card);
+}
+.dph-content {
+  flex: 1;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 24px;
+}
+.dph-footer {
+  padding: 16px 24px;
+  color: var(--muted);
+  font-size: 13px;
+  border-top: 1px solid var(--card-border);
+}
+.dph-bottombar {
+  display: none;
+}
+
+/* Phone: hide rail, show bottom bar. */
+@media (max-width: 768px) {
+  .dph-rail {
+    display: none;
+  }
+  .dph-bottombar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border-top: 1px solid var(--card-border);
+    z-index: 40;
+  }
+  .dph-content {
+    padding: 16px;
+    padding-bottom: 72px;
+  }
+}
+
+/* Data table basics, Section 10.3. */
+.dph-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.dph-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  text-align: left;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--card-border);
+}
+.dph-table tbody td {
+  padding: 0 12px;
+  height: 44px;
+  border-bottom: 1px solid var(--card-border);
+}
+.dph-num {
+  font-family: var(--font-plex-mono), monospace;
+  text-align: right;
+}
+
+/* Scorecard wraps to 4 columns on phone. */
+@media (max-width: 640px) {
+  .dph-scorecard {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}

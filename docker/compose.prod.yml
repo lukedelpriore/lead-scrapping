@@ -1,0 +1,91 @@
+# Production stack for the Hostinger VPS. Section 14.
+# Deploy: git pull && docker compose -f docker/compose.prod.yml up -d --build
+# Env lives at /opt/dph-lead-engine/.env (mode 600).
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dph}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dph}
+      POSTGRES_DB: ${POSTGRES_DB:-dph_lead_engine}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dph} -d ${POSTGRES_DB:-dph_lead_engine}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    command: ["pnpm", "--filter", "@dph/db", "migrate"]
+    env_file:
+      - ${ENV_FILE:-/opt/dph-lead-engine/.env}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-/opt/dph-lead-engine/.env}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "3000"
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-/opt/dph-lead-engine/.env}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      LEADS_DOMAIN: ${LEADS_DOMAIN:-leads.delpriorehospitality.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+  backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
