@@ -11,6 +11,7 @@ const nextConfig = {
     "googleapis",
     "@anthropic-ai/sdk",
     "pino",
+    "pg-boss",
   ],
 };
 

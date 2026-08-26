@@ -1,10 +1,13 @@
 import { getEnv } from "@dph/config";
+import { prisma } from "@dph/db";
 import { logger } from "./logger";
+import { getBoss, stopBoss, JOBS, type RunJobData } from "./queue";
+import { runDiscoverJob } from "./jobs/discover";
 
 /**
- * Worker entry point. In M0 this validates the environment, confirms it can
- * reach the database, and stays up. Job registration (Overpass, RocketReach
- * search, qualify, find, reveal, deliver) lands in M2 through M4 on pg-boss.
+ * Worker entry point. Boots pg-boss and registers the pipeline jobs. M2 wires
+ * discovery; qualify, find, reveal, and deliver land in M3 and M4. REVEAL_MODE
+ * stays off, so no reveal job spends a credit during the build.
  */
 async function main() {
   const env = getEnv();
@@ -12,24 +15,38 @@ async function main() {
     { revealMode: env.REVEAL_MODE, aiMode: env.AI_MODE, placesEnabled: env.PLACES_ENABLED },
     "worker starting",
   );
-
   if (env.REVEAL_MODE !== "off") {
-    logger.warn(
-      "REVEAL_MODE is not off. During the build it must stay off; no reveal jobs will run.",
-    );
+    logger.warn("REVEAL_MODE is not off. During the build it must stay off.");
   }
 
-  // pg-boss job wiring is added in M2. Keep the process alive for now.
-  logger.info("worker ready, waiting for jobs (job registration lands in M2)");
+  const boss = await getBoss();
+  await boss.createQueue(JOBS.discover);
 
-  const shutdown = (signal: string) => {
+  await boss.work<RunJobData>(JOBS.discover, async (jobs) => {
+    for (const job of jobs) {
+      logger.info({ jobId: job.id, data: job.data }, "discover job received");
+      try {
+        await prisma.run.update({ where: { id: job.data.runId }, data: { status: "running" } });
+        await runDiscoverJob(job.data);
+      } catch (err) {
+        logger.error({ err, runId: job.data.runId }, "discover job failed");
+        await prisma.run.update({ where: { id: job.data.runId }, data: { status: "failed" } });
+        await prisma.request.update({ where: { id: job.data.requestId }, data: { status: "failed" } });
+        throw err;
+      }
+    }
+  });
+
+  logger.info("worker ready, discover job registered");
+
+  const shutdown = async (signal: string) => {
     logger.info({ signal }, "worker shutting down");
+    await stopBoss();
     process.exit(0);
   };
-  process.on("SIGINT", () => shutdown("SIGINT"));
-  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => void shutdown("SIGINT"));
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
-  // Keep alive.
   await new Promise<void>(() => {});
 }
 

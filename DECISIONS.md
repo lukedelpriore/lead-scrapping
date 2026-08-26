@@ -82,3 +82,17 @@ The api_calls row records costUnits only when a call returns 2xx. Retries and fa
 
 **D25. jitter and clock are injectable for deterministic tests.**
 The limiter and HttpClient take a Clock and a jitter function. Tests use a manual clock that advances virtual time on sleep and a fixed jitter, so retry and backoff timing is asserted exactly with no real delay and no Math.random in the test path.
+
+## 2026-08-26, M2 requests, discover, gate 1
+
+**D26. Pipeline stays pure; stage orchestration that touches Postgres lives in the worker.**
+`packages/pipeline` holds pure logic and adapters with no database dependency, so its tests need no database. The discovery persistence stage (merge, suppress, write venues, update stage counts) lives in `apps/worker/src/stages` and takes already gathered venues plus a suppression lookup, so it is verifiable offline with fixtures. The worker job gathers from live clients and calls it.
+
+**D27. Each discovery source is attempted independently.**
+A source that fails, including a blocked network, is logged as a run event and the run continues with what the other sources returned. This follows the spec rule to never stall on a download and makes an offline run degrade to pasted clubs rather than fail.
+
+**D28. CSV parsing is a small vetted in house parser, not a dependency.**
+`suppression/csv.ts` is a correct CSV reader (quoted fields, escaped quotes, embedded commas and newlines, CRLF) with unit tests. This avoids adding a parser dependency for one feature. XLSX upload, when added, is parsed by a spreadsheet library in the web handler and passed to the same row based import helpers.
+
+**D29. Run enqueues discovery on pg-boss; the web app sends, the worker processes.**
+The Run request action creates a run and sends a discover job. The worker owns processing. Both connect to the same Postgres, so no extra broker is needed. Live end to end processing needs the worker running and the network open, so it is exercised in a session that has both.

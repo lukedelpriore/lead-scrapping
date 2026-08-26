@@ -7,8 +7,9 @@ import { normalizeName, normalizeEmployer } from "./names";
  * hands us a namespace object or a default wrapped export, so this works under
  * tsx, Vitest, and the Next bundler alike.
  */
+const ns = fuzzballNs as unknown as Record<string, unknown>;
 const fuzzball = (
-  (fuzzballNs as unknown as { default?: unknown }).default ?? fuzzballNs
+  typeof ns["token_set_ratio"] === "function" ? ns : ns["default"]
 ) as { token_set_ratio: (a: string, b: string) => number };
 
 /**

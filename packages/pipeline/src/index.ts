@@ -3,4 +3,8 @@ export * from "./dedupe/index";
 export * from "./tier";
 export * from "./credits";
 export * from "./sheet/mapping";
+export * from "./gate1";
+export * from "./suppression/import";
+export * from "./suppression/csv";
+export * from "./discovery/map";
 export * from "./adapters/index";

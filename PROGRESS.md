@@ -11,7 +11,7 @@ Building M0 to M6 offline after an explicit operator override of the preflight h
 | Preflight | Failed on environment config, see `BLOCKED.md`. Overridden by operator for offline build. |
 | M0 Scaffold | DONE |
 | M1 Integrations | DONE (offline; live provider checks deferred per BLOCKED.md) |
-| M2 Requests, discover, gate 1 | not started |
+| M2 Requests, discover, gate 1 | DONE (offline; live discovery deferred per BLOCKED.md) |
 | M3 Qualify, map, find, gate 2 | not started |
 | M4 Reveal and deliver | not started |
 | M5 Polish | not started |
@@ -46,7 +46,19 @@ Verified: 113 tests pass (9 config, 104 pipeline), pipeline coverage 92 percent 
 
 Deferred (blocked network, no live credentials): the live RocketReach plan and balances, a real test row in the actual sheet, and a live Brevo account read. These are the parts of M1 "done" that need network and keys, and they run in a session that has both, per BLOCKED.md.
 
-## Exact next step: M2 Requests, discover, gate 1
+## M2, done (offline)
+
+- Gate 1 venue merge (`gate1.ts`): merge by domain, then place or osm id, then fuzzy name plus state with a city check; suppression marks venues by domain, name plus state, or in_play group. Proven offline against the database: 4 fixture venues merged to 3, 1 suppressed by a domain key, stage counts updated.
+- Discovery mapping (`discovery/map.ts`): Overpass, RocketReach companies, Serper (tags The Knot and WeddingWire), and pasted clubs into the common venue shape.
+- Suppression import: a correct CSV parser (`suppression/csv.ts`), column auto detection, key generation, and a summary. Upload UI on the Suppression page with a source selector and a report of rows read, keys created, and duplicates skipped. Manual add for an in_play group.
+- Request form: the full New request page (name, states, groups or pasted clubs, tiers, target, per venue and per group, credit cap with a live available line, reveal mode, schedule, notes) with Save draft and Run request actions. Run creates a run and enqueues discovery on pg-boss.
+- Worker: pg-boss queue and a discovery job that gathers per state from Overpass, RocketReach company search, and Serper, plus pasted clubs, and persists through gate 1. Each source is attempted independently; a blocked source is logged as a run event and the run continues.
+
+Verified: 140 tests pass (9 config, 131 pipeline), workspace typecheck clean, web build clean, and the discovery persist stage verified offline against the database.
+
+Deferred (blocked network): a live Florida discovery that returns real Overpass and Serper venues. The job and the offline persist path both work; only the live fetch is blocked, per BLOCKED.md.
+
+## Exact next step: M3 Qualify, map, find, gate 2
 
 Build the seven adapters (`RocketReachClient`, `OverpassClient`, `SerperClient`, `PlacesClient`, `ClaudeClient`, `SheetsClient`, `Mailer`) in `packages/pipeline`, each with a token bucket limiter, jittered retries, `Retry-After` handling, a `dryRun` mode, and `api_calls` logging. Wire the Settings page tests. The live RocketReach, Sheets, and Brevo checks cannot run in this session (blocked network), so M1 is built and unit tested against `msw` fixtures, and the live checks are deferred to a session with network per `BLOCKED.md`.
 

@@ -1,6 +1,7 @@
 import { prisma } from "@dph/db";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
+import { SuppressionImport } from "@/components/suppression-import";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,10 @@ export default async function SuppressionPage() {
       <PageHeader title="Suppression">
         <span className="label">{total} keys</span>
       </PageHeader>
+
+      <div style={{ marginBottom: 20 }}>
+        <SuppressionImport />
+      </div>
 
       {rows.length === 0 ? (
         <EmptyState
