@@ -59,14 +59,19 @@ async function seedUsers() {
   }
   const hash = await bcrypt.hash(password, 10);
 
+  // When SEED_PASSWORD is provided, it is authoritative: set the hash on both
+  // create and update so a re seed with a new password applies. When the
+  // password was generated, only set it on create so a re seed does not silently
+  // change a working login.
+  const setHashOnUpdate = !generated;
   await prisma.user.upsert({
     where: { email: luke },
-    update: { role: "owner", name: "Luke Del Priore" },
+    update: { role: "owner", name: "Luke Del Priore", ...(setHashOnUpdate ? { passwordHash: hash } : {}) },
     create: { email: luke, name: "Luke Del Priore", role: "owner", passwordHash: hash },
   });
   await prisma.user.upsert({
     where: { email: hashir },
-    update: { role: "operator", name: "Hashir Faiz" },
+    update: { role: "operator", name: "Hashir Faiz", ...(setHashOnUpdate ? { passwordHash: hash } : {}) },
     create: { email: hashir, name: "Hashir Faiz", role: "operator", passwordHash: hash },
   });
 
