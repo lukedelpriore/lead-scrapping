@@ -1,6 +1,13 @@
 import { prisma } from "@dph/db";
 import { getEnv, integrationPresence, PIPELINE_DEFAULTS } from "@dph/config";
 import { PageHeader } from "@/components/page-header";
+import { TestButton } from "@/components/test-button";
+import {
+  runRocketReachTest,
+  runSheetsTest,
+  runBrevoTest,
+  runClaudePing,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -67,9 +74,23 @@ export default async function SettingsPage() {
         />
         <Row label="Places" value={<Status ok={presence.places} on="On" off="Off" />} />
         <Row label="Reveal mode" value={<strong>{env.REVEAL_MODE}</strong>} />
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 16,
+            marginTop: 16,
+          }}
+        >
+          <TestButton label="Test RocketReach" action={runRocketReachTest} />
+          <TestButton label="Test sheet write" action={runSheetsTest} />
+          <TestButton label="Test Brevo" action={runBrevoTest} />
+          <TestButton label="Check AI mode" action={runClaudePing} />
+        </div>
         <p style={{ color: "var(--muted)", fontSize: 12, marginTop: 12, marginBottom: 0 }}>
-          Connection tests (RocketReach account, sheet write, Brevo account) run
-          from here once the network is open. Nothing here spends a credit.
+          These tests are free. The RocketReach test uses the account endpoint,
+          the sheet test writes and removes one row, and the Brevo test checks
+          the account. None spends a credit.
         </p>
       </section>
 

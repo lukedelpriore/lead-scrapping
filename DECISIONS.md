@@ -65,3 +65,20 @@ Section 10.2 says self host with next/font/google. fonts.googleapis.com and font
 
 **D20. Next.js standalone output.**
 `output: standalone` for the production Docker image (Section 14). A consequence is that `next start` warns and the container runs `node .next/standalone/server.js`. The smoke test used the built server directly and passed; the production compose file will invoke the standalone server.
+
+## 2026-08-26, M1 integrations
+
+**D21. Built the RocketReach client from the Section 5.3 summary, superseding D5.**
+Section 5 wants the live docs fetched first, but docs.rocketreach.co is blocked. Under the operator override to keep building, the client is coded from the Section 5.3 endpoint and syntax summary, with best effort Zod schemas marked `passthrough` so unexpected fields do not break parsing. A session with network validates these shapes against the live docs and reconciles any difference before real reveals.
+
+**D22. Credit endpoints are guarded in the client, not only in the reveal stage.**
+`lookupPerson` and `companyLookup` throw when REVEAL_MODE is off, and `companyLookup` also throws when company lookup is disabled. This is a second lock in addition to the reveal stage logic, so an accidental call anywhere in the code cannot spend a credit during the build. Covered by tests that assert zero fetch calls are made.
+
+**D23. Adapter transport is a shared HttpClient, except Sheets.**
+`HttpClient` centralizes the limiter, retries, Retry-After, timeout, and api_calls logging for the fetch based adapters. `SheetsClient` uses googleapis for transport (it handles auth and its own retries) and wraps each call with the same token bucket and api_calls logging, so the "every adapter has a limiter and logging" rule holds.
+
+**D24. Cost units are recorded only on a successful call.**
+The api_calls row records costUnits only when a call returns 2xx. Retries and failures record zero, matching "failed lookups are not charged". This keeps the ledger and api_calls honest.
+
+**D25. jitter and clock are injectable for deterministic tests.**
+The limiter and HttpClient take a Clock and a jitter function. Tests use a manual clock that advances virtual time on sleep and a fixed jitter, so retry and backoff timing is asserted exactly with no real delay and no Math.random in the test path.

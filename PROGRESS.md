@@ -10,7 +10,7 @@ Building M0 to M6 offline after an explicit operator override of the preflight h
 |---|---|
 | Preflight | Failed on environment config, see `BLOCKED.md`. Overridden by operator for offline build. |
 | M0 Scaffold | DONE |
-| M1 Integrations | not started |
+| M1 Integrations | DONE (offline; live provider checks deferred per BLOCKED.md) |
 | M2 Requests, discover, gate 1 | not started |
 | M3 Qualify, map, find, gate 2 | not started |
 | M4 Reveal and deliver | not started |
@@ -34,7 +34,19 @@ Verified in this session:
 - `pnpm build`: production build of all 12 routes plus middleware succeeds.
 - Runtime smoke test on the built server: `/api/health` 200, unauthenticated `/` and `/dashboard` redirect to `/login`, a full credentials sign in returns the correct owner session with a 7 day expiry, and every page renders (leads shows its empty state, groups and requests show data).
 
-## Exact next step: M1 Integrations
+## M1, done (offline)
+
+Seven adapters in `packages/pipeline/src/adapters`, each with a token bucket limiter, jittered exponential backoff, exact Retry-After handling on 429, api_calls logging via an injectable sink, and a dryRun or hard guard where money is involved:
+
+- `RocketReachClient`: free account, person search, company search, checkStatus. The credit endpoints (person lookup, company lookup) throw immediately while REVEAL_MODE is off, so no credit can be spent during the build. Verified by tests.
+- `OverpassClient`, `SerperClient`, `PlacesClient` (throws when disabled), `SheetsClient` (append then clear test write), `Mailer` (Brevo HTTPS, disabled and dryRun paths), `ClaudeClient` (constructed only when AI_MODE is on, tool forced JSON, Zod validated, one retry).
+- Settings page has live test buttons (RocketReach account, sheet write, Brevo account, AI mode check) wired to server actions that record integration_status. With no keys set they return plain "no key" guidance; AI mode shows "Rules mode, no key needed".
+
+Verified: 113 tests pass (9 config, 104 pipeline), pipeline coverage 92 percent lines over the 80 floor, workspace typecheck clean, web production build succeeds, and the four Settings test actions run against the real database returning the correct messages.
+
+Deferred (blocked network, no live credentials): the live RocketReach plan and balances, a real test row in the actual sheet, and a live Brevo account read. These are the parts of M1 "done" that need network and keys, and they run in a session that has both, per BLOCKED.md.
+
+## Exact next step: M2 Requests, discover, gate 1
 
 Build the seven adapters (`RocketReachClient`, `OverpassClient`, `SerperClient`, `PlacesClient`, `ClaudeClient`, `SheetsClient`, `Mailer`) in `packages/pipeline`, each with a token bucket limiter, jittered retries, `Retry-After` handling, a `dryRun` mode, and `api_calls` logging. Wire the Settings page tests. The live RocketReach, Sheets, and Brevo checks cannot run in this session (blocked network), so M1 is built and unit tested against `msw` fixtures, and the live checks are deferred to a session with network per `BLOCKED.md`.
 

@@ -4,8 +4,14 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@dph/config", "@dph/db", "@dph/pipeline"],
   eslint: { ignoreDuringBuilds: true },
-  // Prisma client and bcryptjs stay external to the server bundle.
-  serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  // Server only packages kept out of the bundle.
+  serverExternalPackages: [
+    "@prisma/client",
+    "bcryptjs",
+    "googleapis",
+    "@anthropic-ai/sdk",
+    "pino",
+  ],
 };
 
 export default nextConfig;
