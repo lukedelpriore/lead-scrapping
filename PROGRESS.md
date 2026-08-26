@@ -13,7 +13,7 @@ Building M0 to M6 offline after an explicit operator override of the preflight h
 | M1 Integrations | DONE (offline; live provider checks deferred per BLOCKED.md) |
 | M2 Requests, discover, gate 1 | DONE (offline; live discovery deferred per BLOCKED.md) |
 | M3 Qualify, map, find, gate 2 | DONE (offline; live fetch and person search deferred per BLOCKED.md) |
-| M4 Reveal and deliver | not started |
+| M4 Reveal and deliver | DONE (offline; live reveal stays off by design) |
 | M5 Polish | not started |
 | M6 Ship ready | not started |
 
@@ -72,7 +72,19 @@ Verified offline against the database: a venue qualifies to tier 1 with capacity
 
 Deferred (blocked network): live site fetching and live RocketReach person search. The stages and the offline paths work; only the live fetch and search are blocked, per BLOCKED.md.
 
-## Exact next step: M4 Reveal and deliver
+## M4, done (offline)
+
+- Reveal selection (`reveal/select.ts`): auto reveals confident primaries in rank order up to the batch cap, respects the per venue cap of two and the per group cap of four, and holds alternates for the no mobile rule. ask sends everything to review.
+- Lookup result parser (`reveal/parse.ts`) and fixture generator (`reveal/fixture.ts`) for the REVEAL_MODE off no op.
+- Worker reveal stage: with REVEAL_MODE off it reports "would spend n credits", writes clearly fake fixture contacts, and spends nothing. With reveal on it looks up, polls, stores verified data, and writes one ledger charge per success.
+- Worker deliver stage: post reveal check on phone and email, sheet row mapping, sheet append (or done_pending_sheet when no sheet is configured), lead rows, ledger reconcile, and one summary email (or a disabled notice).
+- Full pipeline orchestration job that chains discover, qualify, find, reveal, and deliver, with live stages degrading gracefully when the network is blocked.
+
+Verified offline against the database with REVEAL_MODE off: reveal reported "would spend 3 credits", wrote 3 fixture contacts (0 charged, clearly fake), deliver created 3 leads with 0 credit ledger charges, and the request moved to done_pending_sheet with email disabled.
+
+Deferred by design and by the blocked network: a live reveal that spends real credits (REVEAL_MODE stays off for the whole build, hard stop 2), and the live sheet append and email (no credentials, no network). The stages and the offline paths work, per BLOCKED.md.
+
+## Exact next step: M5 Polish
 
 Build the seven adapters (`RocketReachClient`, `OverpassClient`, `SerperClient`, `PlacesClient`, `ClaudeClient`, `SheetsClient`, `Mailer`) in `packages/pipeline`, each with a token bucket limiter, jittered retries, `Retry-After` handling, a `dryRun` mode, and `api_calls` logging. Wire the Settings page tests. The live RocketReach, Sheets, and Brevo checks cannot run in this session (blocked network), so M1 is built and unit tested against `msw` fixtures, and the live checks are deferred to a session with network per `BLOCKED.md`.
 

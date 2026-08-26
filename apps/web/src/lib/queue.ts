@@ -7,6 +7,7 @@ import { getEnv } from "@dph/config";
  */
 export const JOBS = {
   discover: "discover",
+  runRequest: "run-request",
 } as const;
 
 let boss: PgBoss | null = null;
@@ -18,8 +19,8 @@ async function getBoss(): Promise<PgBoss> {
   return boss;
 }
 
-export async function enqueueDiscover(data: { runId: string; requestId: string }): Promise<void> {
+export async function enqueueRunRequest(data: { runId: string; requestId: string }): Promise<void> {
   const b = await getBoss();
-  await b.createQueue(JOBS.discover);
-  await b.send(JOBS.discover, data);
+  await b.createQueue(JOBS.runRequest);
+  await b.send(JOBS.runRequest, data);
 }

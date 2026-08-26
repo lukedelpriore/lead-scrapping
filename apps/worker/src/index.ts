@@ -3,6 +3,7 @@ import { prisma } from "@dph/db";
 import { logger } from "./logger";
 import { getBoss, stopBoss, JOBS, type RunJobData } from "./queue";
 import { runDiscoverJob } from "./jobs/discover";
+import { runRequestJob } from "./jobs/run-request";
 
 /**
  * Worker entry point. Boots pg-boss and registers the pipeline jobs. M2 wires
@@ -21,23 +22,25 @@ async function main() {
 
   const boss = await getBoss();
   await boss.createQueue(JOBS.discover);
+  await boss.createQueue(JOBS.runRequest);
 
+  // Discover only, used for a discovery refresh.
   await boss.work<RunJobData>(JOBS.discover, async (jobs) => {
     for (const job of jobs) {
       logger.info({ jobId: job.id, data: job.data }, "discover job received");
-      try {
-        await prisma.run.update({ where: { id: job.data.runId }, data: { status: "running" } });
-        await runDiscoverJob(job.data);
-      } catch (err) {
-        logger.error({ err, runId: job.data.runId }, "discover job failed");
-        await prisma.run.update({ where: { id: job.data.runId }, data: { status: "failed" } });
-        await prisma.request.update({ where: { id: job.data.requestId }, data: { status: "failed" } });
-        throw err;
-      }
+      await failRunOnError(job.data, () => runDiscoverJob(job.data));
     }
   });
 
-  logger.info("worker ready, discover job registered");
+  // Full pipeline: discover, qualify, find, reveal, deliver.
+  await boss.work<RunJobData>(JOBS.runRequest, async (jobs) => {
+    for (const job of jobs) {
+      logger.info({ jobId: job.id, data: job.data }, "run-request job received");
+      await failRunOnError(job.data, () => runRequestJob(job.data));
+    }
+  });
+
+  logger.info("worker ready, discover and run-request jobs registered");
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "worker shutting down");
@@ -48,6 +51,21 @@ async function main() {
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
   await new Promise<void>(() => {});
+}
+
+async function failRunOnError(
+  data: RunJobData,
+  fn: () => Promise<void>,
+): Promise<void> {
+  try {
+    await prisma.run.update({ where: { id: data.runId }, data: { status: "running" } });
+    await fn();
+  } catch (err) {
+    logger.error({ err, runId: data.runId }, "job failed");
+    await prisma.run.update({ where: { id: data.runId }, data: { status: "failed" } });
+    await prisma.request.update({ where: { id: data.requestId }, data: { status: "failed" } });
+    throw err;
+  }
 }
 
 main().catch((err) => {

@@ -110,3 +110,17 @@ Gate 2's SameRunSet records a candidate's keys only when it is kept as ready, so
 
 **D33. next start warns under output standalone; the smoke test used next start.**
 `output: standalone` is set for the production image. `next start` prints a warning and the standalone server needs the Prisma query engine copied next to the bundle, which is a Dockerfile step in M6. For the in VM smoke tests, `next start` with the full node_modules is used and works. M6 copies the Prisma engine into the standalone image.
+
+## 2026-08-26, M4 reveal and deliver
+
+**D34. Reveal is guarded three ways so no credit is spent during the build.**
+The RocketReach client refuses lookup while REVEAL_MODE is off (D22), the reveal stage's off branch never calls the client and writes fixtures instead, and hard stop 2 keeps REVEAL_MODE off for the whole build. Verified offline: a reveal produced zero credit ledger rows.
+
+**D35. Fixture contacts are clearly fake and deterministic.**
+The off path writes example.com emails and 555 phone numbers, credit_charged false, derived deterministically from the candidate id so a re run is stable and no fixture is mistaken for real contact data.
+
+**D36. Deliver degrades honestly when the sheet or email is not configured.**
+With no Google service account the run sits in done_pending_sheet and logs that leads are in the database only; with no Brevo key it logs that email is disabled. Leads live in Postgres first, so nothing is lost, matching Section 6.8.
+
+**D37. A single run-request orchestration job chains all stages.**
+Run request enqueues one job that runs discover, qualify, find, reveal, and deliver in order. Live stages (site fetch, person search) are wrapped so a blocked network logs a run event and the run continues to deliver rather than failing.

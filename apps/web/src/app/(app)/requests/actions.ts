@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@dph/db";
 import { suggestedCreditCap } from "@dph/pipeline";
 import { auth } from "@/auth";
-import { enqueueDiscover } from "@/lib/queue";
+import { enqueueRunRequest } from "@/lib/queue";
 
 const requestInput = z.object({
   name: z.string().min(1, "Name is required"),
@@ -90,7 +90,7 @@ export async function runRequest(formData: FormData): Promise<void> {
     data: { requestId, status: "queued", startedAt: new Date() },
   });
   await prisma.request.update({ where: { id: requestId }, data: { status: "running" } });
-  await enqueueDiscover({ runId: run.id, requestId });
+  await enqueueRunRequest({ runId: run.id, requestId });
   revalidatePath("/requests");
   redirect("/requests");
 }

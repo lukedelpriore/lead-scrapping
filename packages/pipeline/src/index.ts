@@ -12,4 +12,7 @@ export * from "./find/adjudicate";
 export * from "./find/gate2";
 export * from "./find/rank";
 export * from "./find/search-plan";
+export * from "./reveal/select";
+export * from "./reveal/parse";
+export * from "./reveal/fixture";
 export * from "./adapters/index";
