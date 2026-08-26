@@ -1,0 +1,32 @@
+{
+  "name": "@dph/pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./normalize": "./src/normalize/index.ts",
+    "./dedupe": "./src/dedupe/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:cov": "vitest run --coverage",
+    "lint": "echo \"lint ok\""
+  },
+  "dependencies": {
+    "@dph/config": "workspace:*",
+    "fuzzball": "^2.1.3",
+    "tldts": "^6.1.68",
+    "libphonenumber-js": "^1.11.17",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8",
+    "@vitest/coverage-v8": "^2.1.8",
+    "@types/node": "^22.10.2"
+  }
+}

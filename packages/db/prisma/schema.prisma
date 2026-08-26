@@ -1,0 +1,515 @@
+// Del Priore Hospitality Lead Engine, data model.
+// Every table has id uuid, created_at, updated_at. Section 7 of the spec.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- enums ----------
+
+enum Role {
+  owner
+  operator
+}
+
+enum TriState {
+  yes
+  no
+  unclear
+}
+
+enum OwnershipType {
+  group
+  private_owner
+  member_owned
+  municipal
+  unclear
+}
+
+enum VenueStatus {
+  open
+  suppressed
+  dropped
+}
+
+enum GroupStatus {
+  open
+  in_play
+  delivered
+}
+
+enum RequestStatus {
+  draft
+  queued
+  running
+  waiting_quota
+  needs_review
+  paused
+  done
+  done_pending_sheet
+  failed
+}
+
+enum RunStatus {
+  queued
+  running
+  waiting_quota
+  needs_review
+  paused
+  done
+  done_pending_sheet
+  failed
+}
+
+enum RevealMode {
+  auto
+  ask
+}
+
+enum EventLevel {
+  info
+  warn
+  error
+}
+
+enum TargetType {
+  venue
+  group
+}
+
+enum CandidateRank {
+  primary
+  alternate
+}
+
+enum DedupeStatus {
+  ready
+  duplicate
+  rejected
+}
+
+enum ReviewStatus {
+  none
+  pending
+  approved
+  declined
+}
+
+enum VenueSourceKind {
+  osm
+  rocketreach
+  serper
+  group_page
+  places
+  pasted
+  knot
+  weddingwire
+}
+
+enum SuppressionKeyType {
+  profile_id
+  linkedin
+  email
+  phone
+  name_employer
+  domain
+  venue_name_state
+  group
+}
+
+enum SuppressionSource {
+  luke_import
+  client
+  prospect
+  in_play
+  do_not_contact
+  delivered
+}
+
+enum LedgerKind {
+  charge
+  reconcile
+  reserve_change
+}
+
+// ---------- core ----------
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  role          Role      @default(operator)
+  passwordHash  String?   @map("password_hash")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  createdRequests Request[] @relation("RequestCreatedBy")
+
+  @@map("users")
+}
+
+model Settings {
+  id                      String   @id @default(uuid())
+  reserveCredits          Int      @default(200) @map("reserve_credits")
+  maxCreditsPerRequest    Int      @default(100) @map("max_credits_per_request")
+  maxCreditsPerDay        Int      @default(300) @map("max_credits_per_day")
+  autoRevealMinConfidence Float    @default(0.8) @map("auto_reveal_min_confidence")
+  maxContactsPerVenue     Int      @default(2) @map("max_contacts_per_venue")
+  maxContactsPerGroup     Int      @default(4) @map("max_contacts_per_group")
+  searchQuotaHeadroom     Float    @default(0.9) @map("search_quota_headroom")
+  titleLists              Json     @map("title_lists")
+  stateOrder              Json     @map("state_order")
+  notificationEmails      Json     @map("notification_emails")
+  spreadsheetId           String?  @map("spreadsheet_id")
+  timezone                String   @default("America/New_York")
+  placesEnabled           Boolean  @default(false) @map("places_enabled")
+  companyLookupEnabled    Boolean  @default(false) @map("company_lookup_enabled")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model Request {
+  id           String        @id @default(uuid())
+  name         String
+  createdById  String        @map("created_by")
+  states       Json
+  groupIds     Json          @map("group_ids")
+  clubsPasted  String?       @map("clubs_pasted")
+  tiers        Json
+  targetCount  Int           @map("target_count")
+  creditCap    Int           @map("credit_cap")
+  revealMode   RevealMode    @default(ask) @map("reveal_mode")
+  schedule     Json?
+  status       RequestStatus @default(draft)
+  sheetTabName String?       @map("sheet_tab_name")
+  sheetUrl     String?       @map("sheet_url")
+  creditsUsed  Int           @default(0) @map("credits_used")
+  notes        String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  createdBy    User          @relation("RequestCreatedBy", fields: [createdById], references: [id])
+  runs         Run[]
+  candidates   Candidate[]
+  leads        Lead[]
+
+  @@index([status])
+  @@map("requests")
+}
+
+model Run {
+  id          String    @id @default(uuid())
+  requestId   String    @map("request_id")
+  startedAt   DateTime? @map("started_at")
+  finishedAt  DateTime? @map("finished_at")
+  status      RunStatus @default(queued)
+  stageCounts Json      @default("{}") @map("stage_counts")
+  warnings    Json      @default("[]")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  request     Request    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  events      RunEvent[]
+  candidates  Candidate[]
+  leads       Lead[]
+
+  @@index([requestId])
+  @@map("runs")
+}
+
+model RunEvent {
+  id        String     @id @default(uuid())
+  runId     String     @map("run_id")
+  stage     String
+  level     EventLevel @default(info)
+  message   String
+  data      Json?
+  at        DateTime   @default(now())
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  run       Run        @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, at])
+  @@index([runId, level])
+  @@map("run_events")
+}
+
+// ---------- venues and groups ----------
+
+model Venue {
+  id                   String        @id @default(uuid())
+  name                 String
+  nameNormalized       String        @map("name_normalized")
+  city                 String?
+  state                String?
+  website              String?
+  domain               String?
+  mainLine             String?       @map("main_line")
+  lat                  Float?
+  lng                  Float?
+  osmId                String?       @map("osm_id")
+  placeId              String?       @map("place_id")
+  rrCompanyId          String?       @map("rr_company_id")
+  ownershipType        OwnershipType @default(unclear) @map("ownership_type")
+  groupId              String?       @map("group_id")
+  tier                 Int?
+  hostsWeddings        TriState      @default(unclear) @map("hosts_weddings")
+  hostsCorporate       TriState      @default(unclear) @map("hosts_corporate")
+  nonmemberEvents      TriState      @default(unclear) @map("nonmember_events")
+  evidenceUrl          String?       @map("evidence_url")
+  evidencePhrase       String?       @map("evidence_phrase")
+  capacity             Int?
+  siteContact          Json?         @map("site_contact")
+  classifierConfidence Float?        @map("classifier_confidence")
+  status               VenueStatus   @default(open)
+  qualifiedAt          DateTime?     @map("qualified_at")
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  group        Group?         @relation(fields: [groupId], references: [id])
+  sources      VenueSource[]
+  candidates   Candidate[]
+  leads        Lead[]
+
+  @@index([state, status, tier])
+  @@index([domain])
+  @@index([nameNormalized, state])
+  @@index([osmId])
+  @@index([placeId])
+  @@index([rrCompanyId])
+  @@index([groupId])
+  @@map("venues")
+}
+
+model VenueSource {
+  id        String          @id @default(uuid())
+  venueId   String          @map("venue_id")
+  source    VenueSourceKind
+  sourceRef String?         @map("source_ref")
+  raw       Json?
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  venue     Venue           @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@index([venueId])
+  @@index([source])
+  @@map("venue_sources")
+}
+
+model Group {
+  id             String      @id @default(uuid())
+  name           String
+  nameNormalized String      @unique @map("name_normalized")
+  domain         String?
+  rrCompanyId    String?     @map("rr_company_id")
+  portfolioUrl   String?     @map("portfolio_url")
+  venueCount     Int         @default(0) @map("venue_count")
+  states         Json        @default("[]")
+  status         GroupStatus @default(open)
+  notes          String?
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+
+  venues         Venue[]
+
+  @@index([status])
+  @@index([domain])
+  @@map("groups")
+}
+
+// ---------- candidates, contacts, leads ----------
+
+model Candidate {
+  id                 String        @id @default(uuid())
+  runId              String        @map("run_id")
+  requestId          String        @map("request_id")
+  targetType         TargetType    @map("target_type")
+  venueId            String?       @map("venue_id")
+  groupId            String?       @map("group_id")
+  rrProfileId        String?       @map("rr_profile_id")
+  name               String
+  nameNormalized     String        @map("name_normalized")
+  title              String?
+  employer           String?
+  employerNormalized String?       @map("employer_normalized")
+  linkedinUrl        String?       @map("linkedin_url")
+  linkedinNormalized String?       @map("linkedin_normalized")
+  location           String?
+  rank               CandidateRank @default(primary)
+  confidence         Float         @default(0)
+  reason             String?
+  dedupeStatus       DedupeStatus  @default(ready) @map("dedupe_status")
+  dedupeKey          String?       @map("dedupe_key")
+  dedupeSource       String?       @map("dedupe_source")
+  reviewStatus       ReviewStatus  @default(none) @map("review_status")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  run       Run       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  request   Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  venue     Venue?    @relation(fields: [venueId], references: [id])
+  contacts  Contact[]
+
+  @@index([runId, dedupeStatus])
+  @@index([rrProfileId])
+  @@index([linkedinNormalized])
+  @@index([nameNormalized, employerNormalized])
+  @@index([reviewStatus])
+  @@map("candidates")
+}
+
+model Contact {
+  id              String    @id @default(uuid())
+  candidateId     String    @map("candidate_id")
+  rrProfileId     String?   @map("rr_profile_id")
+  name            String
+  title           String?
+  employer        String?
+  emails          Json      @default("[]")
+  phones          Json      @default("[]")
+  linkedinUrl     String?   @map("linkedin_url")
+  hasMobile       Boolean   @default(false) @map("has_mobile")
+  hasVerifiedEmail Boolean  @default(false) @map("has_verified_email")
+  creditCharged   Boolean   @default(false) @map("credit_charged")
+  lookedUpAt      DateTime? @map("looked_up_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  leads           Lead[]
+
+  @@index([candidateId])
+  @@index([rrProfileId])
+  @@map("contacts")
+}
+
+model Lead {
+  id              String    @id @default(uuid())
+  contactId       String    @map("contact_id")
+  requestId       String    @map("request_id")
+  runId           String    @map("run_id")
+  venueId         String?   @map("venue_id")
+  groupId         String?   @map("group_id")
+  sheetRowMaster  Int?      @map("sheet_row_master")
+  sheetRowRequest Int?      @map("sheet_row_request")
+  deliveredAt     DateTime? @map("delivered_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  run       Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  venue     Venue?   @relation(fields: [venueId], references: [id])
+
+  @@index([requestId])
+  @@index([contactId])
+  @@map("leads")
+}
+
+// ---------- suppression, ledgers, status ----------
+
+model Suppression {
+  id            String             @id @default(uuid())
+  keyType       SuppressionKeyType @map("key_type")
+  keyValue      String             @map("key_value")
+  displayName   String?            @map("display_name")
+  displayCompany String?           @map("display_company")
+  source        SuppressionSource
+  importedFrom  String?            @map("imported_from")
+  notes         String?
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  @@unique([keyType, keyValue])
+  @@index([keyType])
+  @@index([source])
+  @@map("suppression")
+}
+
+model CreditsLedger {
+  id                       String     @id @default(uuid())
+  at                       DateTime   @default(now())
+  kind                     LedgerKind
+  delta                    Int
+  rrPersonExportsRemaining Int?       @map("rr_person_exports_remaining")
+  runId                    String?    @map("run_id")
+  contactId                String?    @map("contact_id")
+  note                     String?
+  createdAt                DateTime   @default(now()) @map("created_at")
+  updatedAt                DateTime   @updatedAt @map("updated_at")
+
+  @@index([at])
+  @@index([runId])
+  @@map("credits_ledger")
+}
+
+model ApiCall {
+  id         String   @id @default(uuid())
+  at         DateTime @default(now())
+  provider   String
+  endpoint   String
+  statusCode Int?     @map("status_code")
+  durationMs Int?     @map("duration_ms")
+  costUnits  Int      @default(0) @map("cost_units")
+  requestId  String?  @map("request_id")
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([provider, at])
+  @@map("api_calls")
+}
+
+model IntegrationStatus {
+  id        String    @id @default(uuid())
+  provider  String    @unique
+  lastOkAt  DateTime? @map("last_ok_at")
+  lastError String?   @map("last_error")
+  planName  String?   @map("plan_name")
+  limits    Json?
+  usage     Json?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("integration_status")
+}
+
+// ---------- reference data (states and counties) ----------
+// Not in Section 7 but the M0 seed and stage 1 discovery need them.
+
+model State {
+  code      String   @id
+  name      String
+  sortOrder Int      @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  counties  County[]
+
+  @@map("states")
+}
+
+model County {
+  id        String   @id @default(uuid())
+  stateCode String   @map("state_code")
+  name      String
+  fips      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  state     State    @relation(fields: [stateCode], references: [code])
+
+  @@unique([stateCode, name])
+  @@index([stateCode])
+  @@map("counties")
+}

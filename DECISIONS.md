@@ -33,3 +33,35 @@ Environment variables were checked for presence and length only, never printed. 
 
 **D10. Sent the three files to the operator directly in the session.**
 The commit exists only inside an ephemeral container that will be reclaimed, and blocker 3 makes pushing impossible. Handing the files over in the session is the only way the preflight findings survive. The operator can commit them by hand, or simply act on them and let a later session regenerate them.
+
+## 2026-08-26, build session (operator override)
+
+**D11. Building M0 offline after an explicit operator override.**
+The operator instructed "keep working" three times after reading the preflight report. That is a direct, repeated instruction from the product owner and it overrides the spec's step 2 hard stop for this session. Blocker 1 (env vars) and blocker 2 (network) remain real and are worked around locally where possible; blocker 3 (no push) means the work is committed locally and delivered as files rather than pushed. Live integration checks (M1 real RocketReach and Sheets calls, M2 live discovery) still cannot run here and will be marked accordingly.
+
+**D12. Created a local `.env.local` and a local Postgres role and database for the build.**
+The cloud supplied no variables, so to run migrations, seed, and tests I created `.env.local` (gitignored, never committed) using the Section 1 example values, and created role `dph` and database `dph_lead_engine` to match. This is the "locally they live in .env.local" path the spec describes. No real secret is used or committed; RocketReach, Anthropic, Serper, Brevo, and Google keys are left blank because `REVEAL_MODE=off`, `AI_MODE=off`, and `PLACES_ENABLED=false` mean M0 does not call them.
+
+**D13. Package and framework versions.**
+Next.js 15 App Router with React 19, Tailwind CSS 4, TypeScript strict, Prisma 6, Auth.js (next-auth v5), Zod, Vitest, pino, pg-boss, all per Section 11. Exact patch versions are whatever the registry resolves at build time and are pinned in the committed lockfile.
+
+**D14. Env schema requires core app vars but treats integration keys as optional at boot.**
+Section 12 says Zod refuses to start when a required key is missing, and Section 1 preflight is the gate that requires the integration keys. To let M0 and the UI boot and be tested offline, the boot schema (`packages/config/env.ts`) requires only the core app variables (database, auth, mail from, mode flags, log, tz). Integration keys (RocketReach, Serper, Brevo, Google, Sheet id) are optional at boot and their absence is surfaced on Settings and in `integration_status`. ANTHROPIC_API_KEY is required only when AI_MODE is on, GOOGLE_MAPS_API_KEY only when PLACES_ENABLED is true. The preflight script (built later) is the hard gate for a real run.
+
+**D15. Added reference tables `states` and `counties`, which are not in Section 7.**
+The M0 seed and stage 1 discovery (Serper per county) need them. States seed fully from config. Counties seed from a small verified sample (`packages/db/data/counties.sample.json`) covering the priority states, because the full US Census county list cannot be fetched offline and fabricating 3,000 county names would be wrong data. The full list loads via a county loader in M2 when the network allows. The sample file says plainly it is not the full list.
+
+**D16. AI mode label in the Settings UI is vendor neutral.**
+Section 9 says show AI mode as "Rules or Claude", but Section 19 (CLAUDE.md) and the organization rules say never name a vendor in the UI, and the organization rules take priority. The console is internal (two users), but to honor the stricter rule the Settings row shows "Rules mode, no key needed" when off and "AI classifier" when on, never the vendor name. AI_MODE is off for the whole build, so the on label never renders anyway. The env var identifier ANTHROPIC_API_KEY stays, because it is the contract with the operator's environment and is server side only.
+
+**D17. Password hashing with bcryptjs.**
+Pure JavaScript, so no native build is needed in the sandbox. Used in the seed and in the credentials provider. Cost factor 10.
+
+**D18. Login rate limit is in memory for v1.**
+Section 4 asks for 10 attempts per 15 minutes per IP. Implemented as a single process in memory store, correct for one web container. A multi instance production deployment moves this to a shared store (Postgres or Redis). Recorded here rather than over building it in v1.
+
+**D19. next/font/google kept, since the Google font CDN is reachable.**
+Section 10.2 says self host with next/font/google. fonts.googleapis.com and fonts.gstatic.com return 200 through the proxy, unlike the product data hosts, so the build fetches Bricolage Grotesque, IBM Plex Sans, and IBM Plex Mono successfully. Verified by a passing production build.
+
+**D20. Next.js standalone output.**
+`output: standalone` for the production Docker image (Section 14). A consequence is that `next start` warns and the container runs `node .next/standalone/server.js`. The smoke test used the built server directly and passed; the production compose file will invoke the standalone server.
