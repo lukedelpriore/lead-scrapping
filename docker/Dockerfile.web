@@ -17,18 +17,23 @@ COPY apps/worker/package.json apps/worker/
 RUN pnpm install --frozen-lockfile
 
 FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
+# Bring the whole installed workspace, not just the root node_modules, so pnpm
+# can resolve the per package prisma binary when it runs generate.
+COPY --from=deps /app ./
 COPY . .
 RUN pnpm --filter @dph/db generate
 # Standalone build for the web app.
 RUN pnpm --filter @dph/web build
+# The repo ships no public directory, but the runner copies one, so create it.
+RUN mkdir -p apps/web/public
 # Stage the generated Prisma client and its query engine to a fixed path. In a
 # pnpm workspace the client lives under node_modules/.pnpm, not at
 # node_modules/.prisma, and the Next standalone build does not trace the native
 # engine, so it must be copied in by hand. The glob resolves the one hashed
 # pnpm directory to a stable location the runner can copy from.
-RUN set -eux; \
-    src="$(ls -d /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma | head -1)"; \
+RUN set -eu; \
+    src="$(ls -d /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma 2>/dev/null | head -1)"; \
+    test -n "$src" || { echo "prisma client not found under node_modules/.pnpm"; exit 1; }; \
     mkdir -p /app/prisma-generated; \
     cp -r "$src/." /app/prisma-generated/
 

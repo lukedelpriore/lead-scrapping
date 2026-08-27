@@ -16,7 +16,9 @@ COPY apps/worker/package.json apps/worker/
 RUN pnpm install --frozen-lockfile
 
 FROM base AS build
-COPY --from=deps /app/node_modules ./node_modules
+# Bring the whole installed workspace, not just the root node_modules, so pnpm
+# can resolve the per package prisma binary when it runs generate.
+COPY --from=deps /app ./
 COPY . .
 RUN pnpm --filter @dph/db generate
 
