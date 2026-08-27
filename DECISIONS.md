@@ -157,3 +157,6 @@ Discovery and owner names are free and can be large. A verified owner cell costs
 
 **D46. Business records reuse the venues table.**
 Rather than a large schema rename, a discovered business is stored as a venue (name, city, state, website, domain); the venue specific columns are simply unused for general searches. Requests gained command, businessType, and keywords fields.
+
+**D47. Post reshape fixes: sign in redirect, product name, and the web test runner.**
+The reshape removed /dashboard, /requests, and /groups, but the login server action and the middleware still redirected to /dashboard, so sign in landed on a 404. Both now go to /search. The visible product name is Lead Finder (login heading and browser title), matching the left rail and the approved UI. The web package ran `vitest run` with no config, so vitest tried to collect the Playwright smoke spec and failed; a web vitest.config.ts now excludes playwright/, and the smoke spec was rewritten for the command based UI (find leads page, the seeded demo search, the owner table, the verify panel, the CSV link). Unit tests: config 9, pipeline 195, all green; web build clean.
