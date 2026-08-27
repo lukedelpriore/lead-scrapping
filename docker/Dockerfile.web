@@ -22,6 +22,15 @@ COPY . .
 RUN pnpm --filter @dph/db generate
 # Standalone build for the web app.
 RUN pnpm --filter @dph/web build
+# Stage the generated Prisma client and its query engine to a fixed path. In a
+# pnpm workspace the client lives under node_modules/.pnpm, not at
+# node_modules/.prisma, and the Next standalone build does not trace the native
+# engine, so it must be copied in by hand. The glob resolves the one hashed
+# pnpm directory to a stable location the runner can copy from.
+RUN set -eux; \
+    src="$(ls -d /app/node_modules/.pnpm/@prisma+client*/node_modules/.prisma | head -1)"; \
+    mkdir -p /app/prisma-generated; \
+    cp -r "$src/." /app/prisma-generated/
 
 FROM base AS runner
 ENV NODE_ENV=production
@@ -31,9 +40,11 @@ COPY --from=build /app/apps/web/.next/standalone ./
 COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build /app/apps/web/public ./apps/web/public
 # Prisma schema and the generated client with its query engine, so the
-# standalone server finds the engine at runtime.
+# standalone server finds the engine at runtime. The client goes next to the
+# server bundle at apps/web/.prisma/client, one of the paths Prisma searches
+# from the standalone server, which lives at apps/web/server.js.
 COPY --from=build /app/packages/db/prisma ./packages/db/prisma
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /app/prisma-generated ./apps/web/.prisma
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
