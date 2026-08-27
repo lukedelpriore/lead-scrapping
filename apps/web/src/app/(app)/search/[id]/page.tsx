@@ -46,8 +46,10 @@ export default async function SearchResult({ params }: { params: Promise<{ id: s
   });
 
   const owners = candidates.length;
-  const readyUnverified = candidates.filter((c) => c.dedupeStatus === "ready" && c.contacts.length === 0).length;
-  const verified = candidates.filter((c) => c.contacts.length > 0).length;
+  // A contact counts as verified only when a real credit was spent. Fixtures
+  // written while reveal is off have creditCharged false and are not verified.
+  const readyUnverified = candidates.filter((c) => c.dedupeStatus === "ready" && !c.contacts[0]?.creditCharged).length;
+  const verified = candidates.filter((c) => c.contacts[0]?.creditCharged).length;
   const alreadyHave = candidates.filter((c) => c.dedupeStatus === "duplicate").length;
   const businessesFound = counts.discover ?? owners;
 
@@ -110,7 +112,10 @@ export default async function SearchResult({ params }: { params: Promise<{ id: s
             <tbody>
               {candidates.map((c) => {
                 const contact = c.contacts[0] ?? null;
-                const cc = bestContact(contact);
+                // Only a real, credit charged lookup counts. Fixtures written
+                // while reveal is off are placeholders, never shown as real.
+                const isVerified = contact?.creditCharged === true;
+                const cc = bestContact(isVerified ? contact : null);
                 return (
                   <tr key={c.id}>
                     <td>
@@ -143,7 +148,7 @@ export default async function SearchResult({ params }: { params: Promise<{ id: s
                     <td>
                       {c.dedupeStatus === "duplicate" ? (
                         <span className="pill-have">Already have</span>
-                      ) : contact ? (
+                      ) : isVerified ? (
                         <span className="pill-verified">Verified</span>
                       ) : (
                         <span className="pill-new">New</span>

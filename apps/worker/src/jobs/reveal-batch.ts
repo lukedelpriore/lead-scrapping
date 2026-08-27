@@ -37,13 +37,15 @@ export async function revealBatchJob(data: {
   const budget = availableAfterReserve(personExportsRemaining, reserve);
   const want = Math.max(0, Math.min(data.count, budget));
 
-  // Only ready primary candidates that are not already verified.
+  // Ready primary candidates that do not yet have a real, credit charged
+  // contact. A candidate whose only contact is a fixture (written while reveal
+  // was off) is still eligible, so switching reveal on verifies it for real.
   const toReveal = await prisma.candidate.findMany({
     where: {
       requestId: data.requestId,
       dedupeStatus: "ready",
       rank: "primary",
-      contacts: { none: {} },
+      contacts: { none: { creditCharged: true } },
     },
     orderBy: { confidence: "desc" },
     take: want,
@@ -58,6 +60,9 @@ export async function revealBatchJob(data: {
   let fixtures = 0;
   for (const c of toReveal) {
     try {
+      // Drop any placeholder contact from a prior off mode pass (and its
+      // undelivered lead) so a real lookup replaces it cleanly.
+      await prisma.contact.deleteMany({ where: { candidateId: c.id, creditCharged: false } });
       if (env.REVEAL_MODE === "off") {
         const fx = makeFixtureContact({ id: c.id, name: c.name, title: c.title, employer: c.employer });
         await writeContact(c.id, c, fx, false);

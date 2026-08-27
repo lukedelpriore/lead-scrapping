@@ -34,12 +34,15 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const header = ["Business", "Owner", "Title", "City", "State", "Cell", "Work phone", "Email", "Website", "Status"];
   const rows = candidates.map((c) => {
     const contact = c.contacts[0];
-    const emails = (contact?.emails as Email[]) ?? [];
-    const phones = (contact?.phones as Phone[]) ?? [];
+    // Only real, credit charged lookups are exported as contact detail.
+    // Fixtures written while reveal is off are placeholders, left blank.
+    const verifiedContact = contact?.creditCharged === true ? contact : undefined;
+    const emails = (verifiedContact?.emails as Email[]) ?? [];
+    const phones = (verifiedContact?.phones as Phone[]) ?? [];
     const mobile = phones.find((p) => (p.type ?? "").toLowerCase().includes("mobile"));
     const other = phones.find((p) => p !== mobile);
     const email = (emails.find((e) => (e.type ?? "").toLowerCase() === "work") ?? emails[0])?.address ?? "";
-    const status = c.dedupeStatus === "duplicate" ? "Already have" : contact ? "Verified" : "New";
+    const status = c.dedupeStatus === "duplicate" ? "Already have" : verifiedContact ? "Verified" : "New";
     return [
       c.venue?.name ?? c.employer ?? "",
       c.name,
