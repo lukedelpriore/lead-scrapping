@@ -14,3 +14,7 @@ test-results
 playwright-report
 backups
 *.log
+
+# Live Docker keys must never enter an image
+**/live.env
+docker/live.env

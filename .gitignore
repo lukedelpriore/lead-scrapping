@@ -35,3 +35,7 @@ coverage/
 test-results/
 playwright-report/
 /apps/web/playwright/.cache/
+
+# Live Docker keys (never commit)
+docker/live.env
+**/live.env

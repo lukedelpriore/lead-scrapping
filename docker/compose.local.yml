@@ -1,10 +1,13 @@
-# Local trial stack. Everything runs with one command and Docker Desktop only,
-# no Node, pnpm, or Postgres to install and no real API keys needed. The app
-# runs in offline mode: REVEAL_MODE and AI_MODE are off, provider keys are
-# blank, so the whole free pipeline works against fixtures and nothing is
-# charged. Open http://localhost:3000 once it is up.
+# Local stack. One command, Docker Desktop only, no Node, pnpm, or Postgres to
+# install. By default it runs offline: provider keys are blank and REVEAL_MODE
+# is off, so the free pipeline works against fixtures and nothing is charged.
 #
 #   docker compose -f docker/compose.local.yml up --build
+#
+# To run live with real results, copy docker/live.env.example to
+# docker/live.env and fill in your keys (Serper for discovery, RocketReach for
+# owner names and verified cells). docker/live.env is gitignored and is never
+# committed or baked into the image. Then rebuild with the same command.
 #
 # Sign in with luke@delpriorehospitality.com and the password: leadengine
 services:
@@ -27,6 +30,8 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.worker
     command: ["sh", "-c", "pnpm --filter @dph/db migrate && pnpm --filter @dph/db seed"]
+    # Non secret defaults. Secrets and toggles come from docker/live.env below.
+    # Values here take precedence over live.env, so AI_MODE stays off.
     environment: &appenv
       DATABASE_URL: postgresql://dph:dph@db:5432/dph_lead_engine
       AUTH_SECRET: local-dev-secret-not-for-production-000000
@@ -35,8 +40,6 @@ services:
       SEED_PASSWORD: leadengine
       MAIL_FROM: "Del Priore Lead Engine <leads@delpriorehospitality.com>"
       AI_MODE: "off"
-      REVEAL_MODE: "off"
-      PLACES_ENABLED: "false"
       LOG_LEVEL: info
       TZ: America/New_York
     depends_on:
@@ -49,6 +52,10 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.web
     environment: *appenv
+    # Optional live keys. Missing file is fine (stays offline).
+    env_file:
+      - path: ./live.env
+        required: false
     ports:
       - "3000:3000"
     depends_on:
@@ -61,6 +68,9 @@ services:
       dockerfile: docker/Dockerfile.worker
     command: ["pnpm", "--filter", "@dph/worker", "start"]
     environment: *appenv
+    env_file:
+      - path: ./live.env
+        required: false
     depends_on:
       setup:
         condition: service_completed_successfully
