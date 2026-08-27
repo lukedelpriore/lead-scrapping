@@ -120,6 +120,9 @@ export default async function SearchResult({ params }: { params: Promise<{ id: s
                   <tr key={c.id}>
                     <td>
                       <span style={{ fontWeight: 600 }}>{c.venue?.name ?? c.employer ?? ""}</span>
+                      {c.venue?.address ? (
+                        <span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{c.venue.address}</span>
+                      ) : null}
                       {c.venue?.website ? (
                         <span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{c.venue.website}</span>
                       ) : null}

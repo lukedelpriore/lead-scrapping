@@ -255,6 +255,7 @@ model Venue {
   nameNormalized       String        @map("name_normalized")
   city                 String?
   state                String?
+  address              String?
   website              String?
   domain               String?
   mainLine             String?       @map("main_line")

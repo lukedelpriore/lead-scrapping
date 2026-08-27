@@ -49,6 +49,8 @@ export async function persistDiscovery(args: {
       bestField(cluster.members, (m) => m.domain) ?? registrableDomain(website);
     const state = bestField(cluster.members, (m) => m.state);
     const city = bestField(cluster.members, (m) => m.city);
+    const address = bestField(cluster.members, (m) => m.address);
+    const mainLine = bestField(cluster.members, (m) => m.mainLine);
     const osmId = bestField(cluster.members, (m) => m.osmId);
     const placeId = bestField(cluster.members, (m) => m.placeId);
     const rrCompanyId = bestField(cluster.members, (m) => m.rrCompanyId);
@@ -66,6 +68,8 @@ export async function persistDiscovery(args: {
         nameNormalized: normalizeName(name),
         city: city ?? null,
         state: state ?? null,
+        address: address ?? null,
+        mainLine: mainLine ?? null,
         website: website ?? null,
         domain: domain ?? null,
         osmId: osmId ?? null,

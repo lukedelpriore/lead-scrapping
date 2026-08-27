@@ -77,6 +77,9 @@ export default async function LeadsPage() {
                     </td>
                     <td>
                       <span style={{ fontWeight: 500 }}>{v?.name ?? lead.contact.employer ?? ""}</span>
+                      {v?.address ? (
+                        <span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{v.address}</span>
+                      ) : null}
                       {v?.website ? (
                         <a href={v.website} target="_blank" rel="noreferrer" style={{ display: "block", fontSize: 12, color: "var(--navy)" }}>
                           {v.website.replace(/^https?:\/\//, "")}

@@ -31,7 +31,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     orderBy: [{ dedupeStatus: "asc" }, { confidence: "desc" }],
   });
 
-  const header = ["Business", "Owner", "Title", "City", "State", "Cell", "Work phone", "Email", "Website", "Status"];
+  const header = ["Business", "Owner", "Title", "Address", "City", "State", "Cell", "Work phone", "Email", "Website", "Status"];
   const rows = candidates.map((c) => {
     const contact = c.contacts[0];
     // Only real, credit charged lookups are exported as contact detail.
@@ -47,6 +47,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       c.venue?.name ?? c.employer ?? "",
       c.name,
       c.title ?? "",
+      c.venue?.address ?? "",
       c.venue?.city ?? "",
       c.venue?.state ?? "",
       mobile?.number ? toReadableUsPhone(mobile.number) : "",

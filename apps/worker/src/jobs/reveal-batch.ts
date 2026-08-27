@@ -37,17 +37,19 @@ export async function revealBatchJob(data: {
   const budget = availableAfterReserve(personExportsRemaining, reserve);
   const want = Math.max(0, Math.min(data.count, budget));
 
-  // Ready primary candidates that do not yet have a real, credit charged
-  // contact. A candidate whose only contact is a fixture (written while reveal
-  // was off) is still eligible, so switching reveal on verifies it for real.
+  // Ready candidates that do not yet have a real, credit charged contact. A
+  // candidate whose only contact is a fixture (written while reveal was off)
+  // is still eligible, so switching reveal on verifies it for real. Rank is
+  // not filtered here: when a business's primary owner is already in the lists
+  // (a duplicate), the ready alternate is the one to pursue. Primaries are
+  // still verified first through the confidence ordering.
   const toReveal = await prisma.candidate.findMany({
     where: {
       requestId: data.requestId,
       dedupeStatus: "ready",
-      rank: "primary",
       contacts: { none: { creditCharged: true } },
     },
-    orderBy: { confidence: "desc" },
+    orderBy: [{ rank: "asc" }, { confidence: "desc" }],
     take: want,
   });
 

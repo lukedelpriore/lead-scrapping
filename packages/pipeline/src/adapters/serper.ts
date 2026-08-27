@@ -9,6 +9,37 @@ import { type ApiLogSink, noopApiLog } from "./api-log";
  */
 
 const ENDPOINT = "https://google.serper.dev/search";
+const PLACES_ENDPOINT = "https://google.serper.dev/places";
+
+const placesSchema = z
+  .object({
+    places: z
+      .array(
+        z
+          .object({
+            title: z.string().optional(),
+            address: z.string().optional(),
+            phoneNumber: z.string().optional(),
+            website: z.string().optional(),
+            latitude: z.number().optional(),
+            longitude: z.number().optional(),
+            cid: z.string().optional(),
+          })
+          .passthrough(),
+      )
+      .default([]),
+  })
+  .passthrough();
+
+export interface SerperPlace {
+  title: string;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  lat: number | null;
+  lng: number | null;
+  cid: string | null;
+}
 
 const serperSchema = z
   .object({
@@ -70,6 +101,34 @@ export class SerperClient {
         title: r.title!,
         url: r.link!,
         snippet: r.snippet ?? null,
+      }));
+  }
+
+  /**
+   * Local business search via the Google Maps places endpoint. Returns the
+   * real business name, street address, phone, and website, which is what the
+   * general business discovery needs. Uses the same key as search.
+   */
+  async placesSearch(query: string, opts: { gl?: string } = {}): Promise<SerperPlace[]> {
+    const res = await this.http.request<unknown>({
+      url: PLACES_ENDPOINT,
+      method: "POST",
+      headers: { "X-API-KEY": this.apiKey },
+      body: { q: query, gl: opts.gl ?? "us" },
+      endpointLabel: "places",
+      costUnits: 0,
+    });
+    const parsed = placesSchema.parse(res.data);
+    return parsed.places
+      .filter((p) => p.title)
+      .map((p) => ({
+        title: p.title!,
+        address: p.address ?? null,
+        phone: p.phoneNumber ?? null,
+        website: p.website ?? null,
+        lat: p.latitude ?? null,
+        lng: p.longitude ?? null,
+        cid: p.cid ?? null,
       }));
   }
 }

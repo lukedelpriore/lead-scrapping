@@ -3,9 +3,9 @@ import { getEnv, OWNER_TITLES } from "@dph/config";
 import {
   SerperClient,
   RocketReachClient,
-  buildBusinessSerperQueries,
+  buildBusinessPlacesQueries,
   buildBusinessCompanyQueries,
-  fromSerper,
+  fromSerperPlaces,
   fromRocketReachCompanies,
   buildSearchPlan,
   SameRunSet,
@@ -46,10 +46,12 @@ export async function runSearchJob(data: { runId: string; requestId: string }): 
   const all: DiscoveredVenue[] = [];
 
   if (serper) {
-    for (const q of buildBusinessSerperQueries(keywords, states)) {
+    // Google Maps places results carry the real business name, street
+    // address, phone, and website, which is what a business list needs.
+    for (const q of buildBusinessPlacesQueries(keywords, states)) {
       try {
-        const res = await serper.search(q, { gl: "us" });
-        all.push(...fromSerper(res));
+        const res = await serper.placesSearch(q, { gl: "us" });
+        all.push(...fromSerperPlaces(res));
       } catch (err) {
         await logRunEvent(data.runId, "discover", "warn", `Search failed: ${q}`, { error: (err as Error).message });
       }

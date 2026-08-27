@@ -1,7 +1,7 @@
 import { registrableDomain } from "../normalize/index";
 import type { DiscoveredVenue } from "../gate1";
 import type { GolfCourse } from "../adapters/overpass";
-import type { SerperResult } from "../adapters/serper";
+import type { SerperResult, SerperPlace } from "../adapters/serper";
 
 /**
  * Map each discovery source to the common DiscoveredVenue shape for gate 1.
@@ -64,6 +64,54 @@ export function fromSerper(results: SerperResult[]): DiscoveredVenue[] {
       raw: r,
     };
   });
+}
+
+/**
+ * Map Google Maps places results (via Serper) to venues. This is the good
+ * source for general business discovery: it carries the real business name,
+ * a street address, a phone, and a website.
+ */
+export function fromSerperPlaces(places: SerperPlace[]): DiscoveredVenue[] {
+  return places
+    .filter((p) => p.title)
+    .map((p) => {
+      const loc = parseUsAddress(p.address);
+      return {
+        id: nextId("places"),
+        name: p.title.trim(),
+        address: p.address ?? null,
+        city: loc.city,
+        state: loc.state,
+        mainLine: p.phone ?? null,
+        website: p.website ?? null,
+        domain: registrableDomain(p.website ?? null),
+        placeId: p.cid ?? null,
+        source: "places" as DiscoveredVenue["source"],
+        raw: p,
+      };
+    });
+}
+
+const US_STATE_CODE = /\b([A-Z]{2})\b/;
+
+/**
+ * Pull the city and two letter state out of a US formatted address like
+ * "290 Meadow Rd, Basking Ridge, NJ 07920". Returns nulls when it cannot tell.
+ */
+export function parseUsAddress(address: string | null | undefined): {
+  city: string | null;
+  state: string | null;
+} {
+  if (!address) return { city: null, state: null };
+  const parts = address.split(",").map((s) => s.trim()).filter(Boolean);
+  if (parts.length < 2) return { city: null, state: null };
+  // The last part is usually "STATE ZIP" (or just "STATE"); the one before
+  // it is the city.
+  const tail = parts[parts.length - 1]!;
+  const stateMatch = tail.match(US_STATE_CODE);
+  const state = stateMatch ? stateMatch[1]! : null;
+  const city = parts[parts.length - 2] ?? null;
+  return { city: city || null, state };
 }
 
 /** Pasted club names or urls from the request form. */

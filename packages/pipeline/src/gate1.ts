@@ -29,6 +29,8 @@ export interface DiscoveredVenue {
   name: string;
   city?: string | null;
   state?: string | null;
+  address?: string | null;
+  mainLine?: string | null;
   website?: string | null;
   domain?: string | null;
   osmId?: string | null;
