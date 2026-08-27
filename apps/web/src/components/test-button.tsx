@@ -7,11 +7,7 @@ interface TestResult {
   message: string;
 }
 
-/**
- * A button that runs a connection test server action and shows the result in
- * plain words. No exclamation marks, sentence case, tells the operator what to
- * do on failure.
- */
+/** A button that runs a connection test server action and shows the result. */
 export function TestButton({
   label,
   action,
@@ -51,13 +47,7 @@ export function TestButton({
         {pending ? "Testing" : label}
       </button>
       {result ? (
-        <div
-          role="status"
-          style={{
-            fontSize: 13,
-            color: result.ok ? "var(--fairway)" : "var(--error)",
-          }}
-        >
+        <div role="status" style={{ fontSize: 13, color: result.ok ? "var(--fairway)" : "var(--error)" }}>
           {result.message}
         </div>
       ) : null}

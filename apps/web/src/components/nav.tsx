@@ -4,11 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const ITEMS = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/requests", label: "Requests" },
+  { href: "/search", label: "Find leads" },
   { href: "/leads", label: "Leads" },
-  { href: "/suppression", label: "Suppression" },
-  { href: "/groups", label: "Groups" },
+  { href: "/suppression", label: "Do not contact" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -16,14 +14,14 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-/** Left rail on desktop. Section 9, 10.3. */
+/** Left rail on desktop. */
 export function LeftRail() {
   const pathname = usePathname();
   return (
     <nav aria-label="Primary" className="dph-rail">
       <div style={{ padding: "20px 16px" }}>
         <div className="display-md" style={{ color: "#fff" }}>
-          Lead Engine
+          Lead Finder
         </div>
       </div>
       <ul style={{ listStyle: "none", margin: 0, padding: "8px" }}>
@@ -54,7 +52,7 @@ export function LeftRail() {
   );
 }
 
-/** Bottom bar on phone. Five items plus Settings folds into the row. */
+/** Bottom bar on phone. */
 export function BottomBar() {
   const pathname = usePathname();
   return (

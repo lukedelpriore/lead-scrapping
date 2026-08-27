@@ -1,9 +1,11 @@
 import { getEnv } from "@dph/config";
 import { prisma } from "@dph/db";
 import { logger } from "./logger";
-import { getBoss, stopBoss, JOBS, type RunJobData } from "./queue";
+import { getBoss, stopBoss, JOBS, type RunJobData, type RevealBatchData } from "./queue";
 import { runDiscoverJob } from "./jobs/discover";
 import { runRequestJob } from "./jobs/run-request";
+import { runSearchJob } from "./jobs/run-search";
+import { revealBatchJob } from "./jobs/reveal-batch";
 
 /**
  * Worker entry point. Boots pg-boss and registers the pipeline jobs. M2 wires
@@ -23,24 +25,43 @@ async function main() {
   const boss = await getBoss();
   await boss.createQueue(JOBS.discover);
   await boss.createQueue(JOBS.runRequest);
+  await boss.createQueue(JOBS.runSearch);
+  await boss.createQueue(JOBS.revealBatch);
 
-  // Discover only, used for a discovery refresh.
-  await boss.work<RunJobData>(JOBS.discover, async (jobs) => {
+  // General business search: discover businesses, find owners. No credits.
+  await boss.work<RunJobData>(JOBS.runSearch, async (jobs) => {
     for (const job of jobs) {
-      logger.info({ jobId: job.id, data: job.data }, "discover job received");
-      await failRunOnError(job.data, () => runDiscoverJob(job.data));
+      logger.info({ jobId: job.id, data: job.data }, "run-search job received");
+      await failRunOnError(job.data, () => runSearchJob(job.data));
     }
   });
 
-  // Full pipeline: discover, qualify, find, reveal, deliver.
+  // Verify a capped batch of owner cells, then deliver. Spends credits.
+  await boss.work<RevealBatchData>(JOBS.revealBatch, async (jobs) => {
+    for (const job of jobs) {
+      logger.info({ jobId: job.id, data: job.data }, "reveal-batch job received");
+      try {
+        await revealBatchJob(job.data);
+      } catch (err) {
+        logger.error({ err, runId: job.data.runId }, "reveal-batch failed");
+        throw err;
+      }
+    }
+  });
+
+  // Venue pipeline kept for the original flow.
+  await boss.work<RunJobData>(JOBS.discover, async (jobs) => {
+    for (const job of jobs) {
+      await failRunOnError(job.data, () => runDiscoverJob(job.data));
+    }
+  });
   await boss.work<RunJobData>(JOBS.runRequest, async (jobs) => {
     for (const job of jobs) {
-      logger.info({ jobId: job.id, data: job.data }, "run-request job received");
       await failRunOnError(job.data, () => runRequestJob(job.data));
     }
   });
 
-  logger.info("worker ready, discover and run-request jobs registered");
+  logger.info("worker ready, run-search and reveal-batch jobs registered");
 
   const shutdown = async (signal: string) => {
     logger.info({ signal }, "worker shutting down");

@@ -208,3 +208,12 @@ body {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
 }
+
+/* Status pills for the results table. */
+.pill-new, .pill-verified, .pill-have {
+  display: inline-flex; align-items: center; font-size: 12px; font-weight: 600;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+.pill-new { background: #e6f1ea; color: #1e4c37; }
+.pill-verified { background: #e6f1ea; color: #1e4c37; }
+.pill-have { background: var(--stone); color: var(--muted); }

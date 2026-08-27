@@ -15,4 +15,6 @@ export * from "./find/search-plan";
 export * from "./reveal/select";
 export * from "./reveal/parse";
 export * from "./reveal/fixture";
+export * from "./discovery/business";
+export * from "./command/parse";
 export * from "./adapters/index";

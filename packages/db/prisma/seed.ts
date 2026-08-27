@@ -173,149 +173,128 @@ async function seedGroups() {
 }
 
 /**
- * Demo dataset: 10 demo groups, 50 demo venues, 1 demo request, 1 demo run,
- * and 200 demo candidates. Everything is clearly fake (Demo prefix,
- * example.com domains, 555 phones) so it never mixes with real data. Runs the
- * whole UI and pipeline with no external calls.
+ * Demo search: a general business search ("roofing companies in Ohio and
+ * Michigan") with example businesses, owner names, and a couple already
+ * verified, so the app is clickable with no external calls. Everything is
+ * clearly fake (example.com, 555 numbers) so it never mixes with real data.
  */
-async function seedDemo() {
-  const rng = makeRng(42);
+const DEMO = [
+  { biz: "Summit Roofing Co", owner: "Marcus Hale", city: "Columbus", st: "OH", verified: true },
+  { biz: "Buckeye Exteriors", owner: "Dana Reyes", city: "Dayton", st: "OH", verified: true },
+  { biz: "Maple Ridge Roofing", owner: "Tom Alcott", city: "Toledo", st: "OH", have: true },
+  { biz: "Great Lakes Roof and Siding", owner: "Priya Nair", city: "Detroit", st: "MI" },
+  { biz: "Northline Roofing", owner: "Kevin Boyd", city: "Grand Rapids", st: "MI" },
+  { biz: "Cardinal Roof Systems", owner: "Alan Wu", city: "Cincinnati", st: "OH" },
+  { biz: "Lakeshore Roofing", owner: "Erica Sol", city: "Ann Arbor", st: "MI" },
+  { biz: "Ironwood Roofing", owner: "Sam Ford", city: "Akron", st: "OH", have: true },
+  { biz: "Riverbend Exteriors", owner: "Lena Ortiz", city: "Lansing", st: "MI" },
+  { biz: "Sterling Roof Pros", owner: "Chris Vale", city: "Cleveland", st: "OH" },
+  { biz: "Copper Creek Roofing", owner: "Nina Park", city: "Flint", st: "MI" },
+  { biz: "Evergreen Roofing Co", owner: "Paul Reed", city: "Warren", st: "MI" },
+];
 
-  // Clean any previous demo rows so the demo stays exactly 50/10/200.
-  await prisma.candidate.deleteMany({ where: { name: { startsWith: "Demo Contact" } } });
-  await prisma.venue.deleteMany({ where: { name: { startsWith: "Demo Club" } } });
-  await prisma.group.deleteMany({ where: { name: { startsWith: "Demo Group" } } });
-  await prisma.request.deleteMany({ where: { name: { startsWith: "Demo " } } });
+async function seedDemo() {
+  // Clean any previous demo rows.
+  await prisma.candidate.deleteMany({ where: { name: { in: DEMO.map((d) => d.owner) } } });
+  await prisma.venue.deleteMany({ where: { domain: { endsWith: ".roofdemo.example.com" } } });
+  await prisma.request.deleteMany({ where: { name: { startsWith: "Roofing companies" } } });
 
   const owner = await prisma.user.findFirst({ where: { role: "owner" } });
   if (!owner) throw new Error("owner user missing, seed users first");
 
-  const demoGroups = [];
-  for (let i = 1; i <= 10; i++) {
-    const name = `Demo Group ${String(i).padStart(2, "0")}`;
-    const state = DEMO_STATES[i % DEMO_STATES.length]!;
-    const g = await prisma.group.create({
-      data: {
-        name,
-        nameNormalized: normalizeName(name),
-        status: "open",
-        domain: `demogroup${i}.example.com`,
-        states: [state] as unknown as Prisma.InputJsonValue,
-        venueCount: 0,
-      },
-    });
-    demoGroups.push(g);
-  }
-
-  const demoVenues = [];
-  for (let i = 1; i <= 50; i++) {
-    const name = `Demo Club ${String(i).padStart(2, "0")}`;
-    const state = DEMO_STATES[i % DEMO_STATES.length]!;
-    const ownership = DEMO_OWNERSHIP[i % DEMO_OWNERSHIP.length]!;
-    const inGroup = i % 3 === 0; // a third belong to a demo group
-    const group = inGroup ? demoGroups[i % demoGroups.length]! : null;
-    const tier = ((i % 3) + 1) as 1 | 2 | 3;
-    const v = await prisma.venue.create({
-      data: {
-        name,
-        nameNormalized: normalizeName(name),
-        city: `Demo City ${i}`,
-        state,
-        website: `https://democlub${i}.example.com`,
-        domain: `democlub${i}.example.com`,
-        mainLine: `+1305555${String(1000 + i).slice(-4)}`,
-        ownershipType: ownership,
-        groupId: group?.id ?? null,
-        tier,
-        hostsWeddings: rng() > 0.3 ? "yes" : "unclear",
-        hostsCorporate: rng() > 0.4 ? "yes" : "unclear",
-        nonmemberEvents: rng() > 0.5 ? "yes" : "unclear",
-        evidenceUrl: `https://democlub${i}.example.com/weddings`,
-        evidencePhrase: "membership not required",
-        capacity: 120 + (i % 5) * 40,
-        classifierConfidence: 0.6 + rng() * 0.35,
-        status: "open",
-        qualifiedAt: new Date("2026-08-20T12:00:00Z"),
-      },
-    });
-    demoVenues.push(v);
-    if (group) {
-      await prisma.group.update({
-        where: { id: group.id },
-        data: { venueCount: { increment: 1 } },
-      });
-    }
-  }
-
   const request = await prisma.request.create({
     data: {
-      name: "Demo Florida Tier 1",
+      name: "Roofing companies in Ohio, Michigan",
       createdById: owner.id,
-      states: ["FL"] as unknown as Prisma.InputJsonValue,
+      command: "Find roofing company owners in Ohio and Michigan, about 200 businesses",
+      businessType: "Roofing companies",
+      keywords: ["roofing company", "roofing contractor"] as unknown as Prisma.InputJsonValue,
+      states: ["OH", "MI"] as unknown as Prisma.InputJsonValue,
       groupIds: [] as unknown as Prisma.InputJsonValue,
-      tiers: [1, 2] as unknown as Prisma.InputJsonValue,
-      targetCount: 100,
-      creditCap: 120,
+      tiers: [] as unknown as Prisma.InputJsonValue,
+      targetCount: 200,
+      creditCap: 200,
       revealMode: "ask",
       status: "needs_review",
-      creditsUsed: 0,
-      notes: "Seeded demo request. No external calls, no credits spent.",
+      creditsUsed: 2,
     },
   });
 
   const run = await prisma.run.create({
     data: {
       requestId: request.id,
-      startedAt: new Date("2026-08-25T09:00:00Z"),
+      startedAt: new Date("2026-08-27T09:00:00Z"),
+      finishedAt: new Date("2026-08-27T09:04:00Z"),
       status: "needs_review",
-      stageCounts: {
-        discover: 50,
-        dedupe: 44,
-        qualify: 44,
-        map: 10,
-        find: 200,
-        gate: 168,
-        reveal: 0,
-        deliver: 0,
-      } as unknown as Prisma.InputJsonValue,
+      stageCounts: { discover: 214, dedupe: 200, find: DEMO.length, reveal: 2 } as unknown as Prisma.InputJsonValue,
       warnings: [] as unknown as Prisma.InputJsonValue,
     },
   });
 
-  for (let i = 1; i <= 200; i++) {
-    const venue = demoVenues[i % demoVenues.length]!;
-    const name = `Demo Contact ${String(i).padStart(3, "0")}`;
-    const title = DEMO_TITLES[i % DEMO_TITLES.length]!;
-    const employer = venue.name;
-    const isDup = i % 6 === 0; // some land in Already have
-    await prisma.candidate.create({
+  let slug = 0;
+  for (const d of DEMO) {
+    slug += 1;
+    const domain = `biz${slug}.roofdemo.example.com`;
+    const venue = await prisma.venue.create({
+      data: {
+        name: d.biz,
+        nameNormalized: normalizeName(d.biz),
+        city: d.city,
+        state: d.st,
+        website: `https://${domain}`,
+        domain,
+        status: "open",
+        qualifiedAt: new Date("2026-08-27T09:02:00Z"),
+      },
+    });
+    const first = d.owner.split(" ")[0]!.toLowerCase();
+    const candidate = await prisma.candidate.create({
       data: {
         runId: run.id,
         requestId: request.id,
-        targetType: venue.groupId ? "group" : "venue",
+        targetType: "venue",
         venueId: venue.id,
-        groupId: venue.groupId,
-        rrProfileId: `demo-${100000 + i}`,
-        name,
-        nameNormalized: normalizeName(name),
-        title,
-        employer,
-        employerNormalized: normalizeName(employer),
-        linkedinUrl: `https://linkedin.com/in/demo-contact-${i}`,
-        linkedinNormalized: `linkedin.com/in/demo-contact-${i}`,
-        location: `${venue.city}, ${venue.state}`,
-        rank: i % 4 === 0 ? "alternate" : "primary",
-        confidence: 0.5 + rng() * 0.5,
-        reason: "Seeded demo candidate.",
-        dedupeStatus: isDup ? "duplicate" : "ready",
-        dedupeKey: isDup ? `demo-dup-${i}` : null,
-        dedupeSource: isDup ? "delivered" : null,
-        reviewStatus: isDup ? "none" : "pending",
+        rrProfileId: `demo-${1000 + slug}`,
+        name: d.owner,
+        nameNormalized: normalizeName(d.owner),
+        title: "Owner",
+        employer: d.biz,
+        employerNormalized: normalizeName(d.biz),
+        linkedinUrl: `https://linkedin.com/in/${first}-${slug}`,
+        linkedinNormalized: `linkedin.com/in/${first}-${slug}`,
+        location: `${d.city}, ${d.st}`,
+        rank: "primary",
+        confidence: 0.9,
+        reason: "Seeded demo owner.",
+        dedupeStatus: d.have ? "duplicate" : "ready",
+        dedupeKey: d.have ? `demo-dup-${slug}` : null,
+        dedupeSource: d.have ? "delivered" : null,
+        reviewStatus: "pending",
       },
     });
+    if (d.verified) {
+      await prisma.contact.create({
+        data: {
+          candidateId: candidate.id,
+          rrProfileId: candidate.rrProfileId,
+          name: d.owner,
+          title: "Owner",
+          employer: d.biz,
+          emails: [{ address: `${first}@${domain}`, type: "work", grade: "A" }] as unknown as Prisma.InputJsonValue,
+          phones: [
+            { number: `+1555921${String(3000 + slug).slice(-4)}`, type: "mobile", valid: true },
+            { number: `+1555010${String(4000 + slug).slice(-4)}`, type: "work", valid: true },
+          ] as unknown as Prisma.InputJsonValue,
+          hasMobile: true,
+          hasVerifiedEmail: true,
+          creditCharged: true,
+          lookedUpAt: new Date("2026-08-27T09:03:00Z"),
+        },
+      });
+    }
   }
 
-  console.log("  Seeded demo dataset: 10 groups, 50 venues, 1 request, 1 run, 200 candidates.");
+  console.log(`  Seeded demo search with ${DEMO.length} businesses and owners.`);
 }
 
 async function main() {

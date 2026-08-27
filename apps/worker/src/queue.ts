@@ -7,11 +7,9 @@ import { getEnv } from "@dph/config";
  */
 export const JOBS = {
   discover: "discover",
-  qualify: "qualify",
-  find: "find",
-  reveal: "reveal",
-  deliver: "deliver",
   runRequest: "run-request",
+  runSearch: "run-search",
+  revealBatch: "reveal-batch",
 } as const;
 
 export type JobName = (typeof JOBS)[keyof typeof JOBS];
@@ -19,6 +17,12 @@ export type JobName = (typeof JOBS)[keyof typeof JOBS];
 export interface RunJobData {
   runId: string;
   requestId: string;
+}
+
+export interface RevealBatchData {
+  runId: string;
+  requestId: string;
+  count: number;
 }
 
 let boss: PgBoss | null = null;

@@ -184,6 +184,10 @@ model Request {
   groupIds     Json          @map("group_ids")
   clubsPasted  String?       @map("clubs_pasted")
   tiers        Json
+  // General business search: the plain language command and what it parsed to.
+  command      String?
+  businessType String?       @map("business_type")
+  keywords     Json?
   targetCount  Int           @map("target_count")
   creditCap    Int           @map("credit_cap")
   revealMode   RevealMode    @default(ask) @map("reveal_mode")

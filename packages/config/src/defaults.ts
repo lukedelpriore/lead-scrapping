@@ -138,3 +138,16 @@ export const CREDIT_PLAN = {
   company_exports_total: 3600,
   reset_date: "2027-06-15",
 } as const;
+
+/**
+ * Owner and decision maker title hierarchy for general business search.
+ * Earlier lists rank higher in adjudication. Used when a request targets any
+ * business type (not a specific ownership model). Editable in Settings.
+ */
+export const OWNER_TITLES: string[][] = [
+  ["Owner", "Co Owner", "Founder", "Co Founder", "Proprietor"],
+  ["President", "CEO", "Chief Executive Officer"],
+  ["Managing Partner", "Partner", "Principal", "Managing Director", "Managing Member"],
+  ["General Manager", "GM", "Director of Operations", "Operations Manager"],
+  ["Vice President", "VP"],
+];

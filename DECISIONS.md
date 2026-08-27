@@ -146,3 +146,14 @@ The standalone build does not copy the Prisma engine next to the bundle, which f
 
 **D43. docs/rocketreach-api-notes.md is written but marked pending live validation.**
 Section 5 requires it. The live docs host was blocked, so the file records the Section 5.3 summary the client was coded against and states plainly that a network enabled session must validate the shapes against the live docs before real reveals.
+
+## 2026-08-27, reshape to a general lead finder
+
+**D44. Generalized the tool from country club venues to any business type, and simplified the UI.**
+Operator feedback made clear the venue only, tab heavy build did not fit. The engine (RocketReach person search and lookup, dedupe, credit ledger and caps, export, the pg-boss worker) is reused unchanged. New: a plain language command parser (business type, states, count), an owner and decision maker title hierarchy, general business discovery (Serper and RocketReach company search, Places optional), and a simple UI: one command box, a results table, a capped batch verify with a credits meter, and CSV export. The venue pipeline is left in place but out of the main flow.
+
+**D45. Verified cells stay capped by credits; volume expectations set honestly.**
+Discovery and owner names are free and can be large. A verified owner cell costs one RocketReach credit, so it is done in operator approved batches (reveal-batch job). The 3,600 per year plan cannot produce thousands of verified cells per run; the UI shows the remaining credits so the limit is visible.
+
+**D46. Business records reuse the venues table.**
+Rather than a large schema rename, a discovered business is stored as a venue (name, city, state, website, domain); the venue specific columns are simply unused for general searches. Requests gained command, businessType, and keywords fields.
