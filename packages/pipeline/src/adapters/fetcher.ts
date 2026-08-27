@@ -1,8 +1,12 @@
 import { request } from "undici";
-import { JSDOM } from "jsdom";
-import { Readability } from "@mozilla/readability";
 import { TokenBucket } from "./token-bucket";
 import { type ApiLogSink, noopApiLog } from "./api-log";
+
+// jsdom and Readability are loaded lazily inside the functions that use them,
+// never at module load. jsdom is a heavy, browser oriented library, and
+// eagerly importing it here would pull it into every consumer of the pipeline
+// barrel, including the web app, where bundling it for the server breaks its
+// CSSOM classes and its data file loading. The worker loads it on first use.
 
 /**
  * Site fetcher for the qualify stage. Section 6.3. Fetches the homepage plus a
@@ -71,9 +75,11 @@ export function selectInternalUrls(
   return [...urls].slice(0, MAX_PAGES);
 }
 
-/** Extract readable main text from HTML, capped. Pure. */
-export function extractText(html: string, url: string): string {
+/** Extract readable main text from HTML, capped. */
+export async function extractText(html: string, url: string): Promise<string> {
   try {
+    const { JSDOM } = await import("jsdom");
+    const { Readability } = await import("@mozilla/readability");
     const dom = new JSDOM(html, { url });
     const reader = new Readability(dom.window.document);
     const article = reader.parse();
@@ -87,9 +93,10 @@ export function extractText(html: string, url: string): string {
   }
 }
 
-/** Collect anchors from HTML for internal URL selection. Pure. */
-export function collectAnchors(html: string, url: string): { href: string; text: string }[] {
+/** Collect anchors from HTML for internal URL selection. */
+export async function collectAnchors(html: string, url: string): Promise<{ href: string; text: string }[]> {
   try {
+    const { JSDOM } = await import("jsdom");
     const dom = new JSDOM(html, { url });
     return [...dom.window.document.querySelectorAll("a[href]")].map((a) => ({
       href: (a as HTMLAnchorElement).getAttribute("href") ?? "",
@@ -159,20 +166,20 @@ export class Fetcher {
     try {
       const home = await this.get(homepageUrl);
       homepageHtml = home.html;
-      const text = extractText(home.html, homepageUrl);
+      const text = await extractText(home.html, homepageUrl);
       pages.push({ url: homepageUrl, text, fetchStatus: text ? "ok" : "empty" });
     } catch {
       pages.push({ url: homepageUrl, text: "", fetchStatus: "error" });
       return pages;
     }
 
-    const anchors = collectAnchors(homepageHtml, homepageUrl);
+    const anchors = await collectAnchors(homepageHtml, homepageUrl);
     const internal = selectInternalUrls(homepageUrl, anchors).filter((u) => u !== homepageUrl);
 
     for (const url of internal) {
       try {
         const res = await this.get(url);
-        const text = extractText(res.html, url);
+        const text = await extractText(res.html, url);
         pages.push({ url, text, fetchStatus: text ? "ok" : "empty" });
       } catch {
         pages.push({ url, text: "", fetchStatus: "error" });

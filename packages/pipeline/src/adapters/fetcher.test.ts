@@ -31,21 +31,21 @@ describe("selectInternalUrls", () => {
 });
 
 describe("extractText", () => {
-  it("extracts readable text and caps length", () => {
+  it("extracts readable text and caps length", async () => {
     const html = `<html><body><article><h1>Weddings</h1><p>${"word ".repeat(1000)}</p></article></body></html>`;
-    const text = extractText(html, "https://club.com/weddings");
+    const text = await extractText(html, "https://club.com/weddings");
     expect(text.length).toBeLessThanOrEqual(3000);
     expect(text.toLowerCase()).toContain("weddings");
   });
 
-  it("returns empty string for junk", () => {
-    expect(extractText("", "https://club.com/")).toBe("");
+  it("returns empty string for junk", async () => {
+    expect(await extractText("", "https://club.com/")).toBe("");
   });
 });
 
 describe("collectAnchors", () => {
-  it("collects href and text from anchors", () => {
-    const anchors = collectAnchors(
+  it("collects href and text from anchors", async () => {
+    const anchors = await collectAnchors(
       '<a href="/weddings">Weddings</a><a href="/golf">Golf</a>',
       "https://club.com/",
     );
