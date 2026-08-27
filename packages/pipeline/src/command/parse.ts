@@ -14,6 +14,12 @@ export interface ParsedCommand {
   businessType: string;
   /** Search keywords derived from the type, used by discovery. */
   keywords: string[];
+  /**
+   * Extra descriptive words from the command that narrow the search, for
+   * example "weddings", "events", "non members". Kept for display and folded
+   * into the discovery keywords so the intent is not lost.
+   */
+  qualifiers: string[];
   /** Two letter US state codes. */
   states: string[];
   /** Human readable location label. */
@@ -89,12 +95,78 @@ export function parseCommand(text: string): ParsedCommand {
     }
   }
 
+  // Descriptive words that narrow the search beyond type and place, for
+  // example "weddings events non members" for a country club search. Fold
+  // them into the keywords so discovery carries the intent instead of
+  // dropping it.
+  const qualifiers = extractQualifiers(raw, keywords, targetCount);
+  if (qualifiers.length) {
+    const phrase = qualifiers.join(" ");
+    if (keywords.length) {
+      keywords = [`${keywords[0]} ${phrase}`, ...keywords];
+    } else {
+      keywords = [phrase];
+    }
+  }
+
   const stateList = [...states];
   const locationLabel = stateList.length
     ? stateList.map((c) => STATE_NAMES[c] ?? c).join(", ")
     : "United States";
 
-  return { businessType, keywords, states: stateList, locationLabel, targetCount, raw };
+  return { businessType, keywords, qualifiers, states: stateList, locationLabel, targetCount, raw };
+}
+
+/** Words that carry no search meaning on their own, stripped from qualifiers. */
+const QUALIFIER_STOP = new Set([
+  "find", "get", "pull", "list", "search", "for", "that", "offer", "offers",
+  "offering", "provide", "provides", "which", "who", "whom", "to", "the", "a",
+  "an", "some", "me", "all", "and", "or", "with", "without", "near", "located",
+  "location", "owners", "owner", "business", "businesses", "company",
+  "companies", "place", "places", "results", "leads", "about", "of", "around",
+  "area", "areas", "do", "does", "their", "our", "your", "any",
+  // Prepositions and filler that carry no search meaning on their own.
+  "in", "on", "at", "by", "from", "into", "over", "under", "us", "usa",
+  "please", "give", "list", "show",
+]);
+
+/**
+ * Pull the descriptive words out of a command, after removing the leading
+ * verbs, the type words, the state names, the count, and common filler. What
+ * remains is the qualifier: the extra detail that narrows the search.
+ */
+function extractQualifiers(raw: string, typeKeywords: string[], count: number): string[] {
+  let s = raw.toLowerCase();
+  // Drop full state names.
+  for (const name of Object.keys(NAME_TO_CODE)) {
+    if (s.includes(name)) s = s.split(name).join(" ");
+  }
+  // Drop the count and its unit.
+  s = s.replace(/\d[\d,]{0,6}\s*(businesses|leads|owners|companies|places|results)?/g, " ");
+  if (count) s = s.split(String(count)).join(" ");
+
+  // Words that belong to the business type, singular and plural, are not
+  // qualifiers.
+  const typeWords = new Set<string>();
+  for (const kw of typeKeywords) {
+    for (const w of kw.toLowerCase().split(/\s+/)) {
+      if (!w) continue;
+      typeWords.add(w);
+      typeWords.add(`${w}s`);
+    }
+  }
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const t of s.split(/[^a-z]+/)) {
+    if (t.length < 2) continue;
+    if (QUALIFIER_STOP.has(t)) continue;
+    if (typeWords.has(t)) continue;
+    if (seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out.slice(0, 6);
 }
 
 /**

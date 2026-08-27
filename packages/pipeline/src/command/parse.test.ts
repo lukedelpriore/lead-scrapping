@@ -48,4 +48,28 @@ describe("parseCommand", () => {
     const p = parseCommand("Find roofers in Ohio, 999999 businesses");
     expect(p.targetCount).toBe(5000);
   });
+
+  it("has no qualifiers for a plain type and place search", () => {
+    const p = parseCommand("Find roofing company owners in Ohio and Michigan, about 200 businesses");
+    expect(p.qualifiers).toEqual([]);
+    expect(p.keywords).toContain("roofing company");
+  });
+
+  it("captures qualifiers and folds them into discovery keywords", () => {
+    const p = parseCommand("Please give me a list of country clubs that offer weddings and events for non members");
+    expect(p.businessType).toBe("Golf and country clubs");
+    expect(p.qualifiers).toEqual(expect.arrayContaining(["weddings", "events", "members"]));
+    // The first discovery keyword carries the type plus the qualifier.
+    const primary = (p.keywords[0] ?? "").toLowerCase();
+    expect(primary).toContain("country club");
+    expect(primary).toContain("weddings");
+    // The plain type keyword is still present for recall.
+    expect(p.keywords).toContain("country club");
+  });
+
+  it("keeps qualifiers out of the type words", () => {
+    const p = parseCommand("Find wedding venues that allow outside catering in Texas, 100 businesses");
+    expect(p.qualifiers).not.toContain("wedding");
+    expect(p.qualifiers).toEqual(expect.arrayContaining(["allow", "outside", "catering"]));
+  });
 });
