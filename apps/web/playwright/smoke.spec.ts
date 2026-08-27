@@ -1,56 +1,63 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * Smoke test. Sign in, view the dashboard, open the seeded demo request, watch
- * its scorecard, and open the Review and Already have tabs. The seeded demo run
- * stands in for a completed demo run since the worker is not driven here and
- * live discovery is offline. Also exercises the New request draft path.
+ * Smoke test for Lead Finder. Sign in, land on the Find leads page, see the
+ * credit meter and the command box, then open the seeded demo search and
+ * check the results: stats, the owner table, the verify panel, and the CSV
+ * link. The seeded demo run stands in for a completed run since the worker is
+ * not driven here and live discovery is offline.
  */
 
 const EMAIL = "luke@delpriorehospitality.com";
 const PASSWORD = process.env.SEED_PASSWORD ?? "devpassword";
+const DEMO_SEARCH = "Roofing companies in Ohio, Michigan";
 
 async function signIn(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(EMAIL);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL("**/dashboard");
+  await page.waitForURL("**/search");
 }
 
-test("sign in and see the dashboard ledger", async ({ page }) => {
+test("sign in and see the find leads page", async ({ page }) => {
   await signIn(page);
-  await expect(page.getByText("Export credits, plan year ending")).toBeVisible();
-  await expect(page.getByRole("link", { name: "New request" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Find leads" })).toBeVisible();
+  await expect(page.getByText("Who do you want to find?")).toBeVisible();
+  await expect(page.getByText("Verified contacts left")).toBeVisible();
+  // The command box is present and ready to accept a plain words search.
+  await expect(page.getByLabel("Describe who to find")).toBeVisible();
 });
 
-test("open the demo request and watch the scorecard and tabs", async ({ page }) => {
+test("open the demo search and see owners and the verify panel", async ({ page }) => {
   await signIn(page);
-  await page.goto("/requests");
-  await expect(page.getByRole("link", { name: "Demo Florida Tier 1" })).toBeVisible();
-  await page.getByRole("link", { name: "Demo Florida Tier 1" }).click();
-  await page.waitForURL(/\/requests\/.+/);
 
-  // Scorecard cells (exact so the empty-state sentence mentioning Reveal does
-  // not also match).
-  await expect(page.getByText("Discover", { exact: true })).toBeVisible();
-  await expect(page.getByText("Reveal", { exact: true })).toBeVisible();
+  // The seeded demo shows in recent searches.
+  await expect(page.getByRole("link", { name: DEMO_SEARCH })).toBeVisible();
+  await page.getByRole("link", { name: DEMO_SEARCH }).click();
+  await page.waitForURL(/\/search\/.+/);
 
-  // Review tab shows ready candidates.
-  await page.getByRole("link", { name: "Review" }).click();
-  await expect(page.getByText(/Demo Contact/).first()).toBeVisible();
+  // Result stats.
+  await expect(page.getByText("Businesses found")).toBeVisible();
+  await expect(page.getByText("Owner names found")).toBeVisible();
+  await expect(page.getByText("Cells verified")).toBeVisible();
 
-  // Already have tab shows duplicates.
-  await page.getByRole("link", { name: "Already have" }).click();
-  await expect(page.getByText("delivered").first()).toBeVisible();
+  // A seeded business and owner appear in the table.
+  await expect(page.getByText("Summit Roofing Co").first()).toBeVisible();
+  await expect(page.getByText("Marcus Hale").first()).toBeVisible();
+
+  // The verify panel and CSV download are available.
+  await expect(page.getByText("Verify owner cells")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Verify this batch" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download CSV" })).toBeVisible();
 });
 
-test("open the new request form and save a draft", async ({ page }) => {
+test("the nav links to the main sections", async ({ page }) => {
   await signIn(page);
-  await page.goto("/requests/new");
-  await page.locator('input[name="name"]').fill("Smoke Test Draft");
-  await page.locator('select[name="states"]').selectOption("FL");
-  await page.getByRole("button", { name: "Save draft" }).click();
-  await page.waitForURL("**/requests");
-  await expect(page.getByText("Smoke Test Draft")).toBeVisible();
+  // Each label renders in both the desktop rail and the phone bottom bar, so
+  // match the first visible instance.
+  await expect(page.getByRole("link", { name: "Find leads" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Leads", exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Do not contact" }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "Settings" }).first()).toBeVisible();
 });

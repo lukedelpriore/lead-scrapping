@@ -25,7 +25,7 @@ export const authConfig = {
       if (isPublic) return true;
       if (isLogin) {
         // Signed in users skip the login page.
-        if (isLoggedIn) return Response.redirect(new URL("/dashboard", nextUrl));
+        if (isLoggedIn) return Response.redirect(new URL("/search", nextUrl));
         return true;
       }
       return isLoggedIn;

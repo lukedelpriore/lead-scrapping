@@ -3,8 +3,8 @@ import { bricolage, plexSans, plexMono } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Lead Engine",
-  description: "Del Priore Hospitality Lead Engine",
+  title: "Lead Finder",
+  description: "Del Priore Hospitality Lead Finder",
 };
 
 export default function RootLayout({

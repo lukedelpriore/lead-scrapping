@@ -19,7 +19,7 @@ export default async function LoginPage({
       await signIn("credentials", {
         email: formData.get("email"),
         password: formData.get("password"),
-        redirectTo: "/dashboard",
+        redirectTo: "/search",
       });
     } catch (err) {
       if (err instanceof AuthError) {
@@ -41,7 +41,7 @@ export default async function LoginPage({
     >
       <div className="card" style={{ padding: 28, width: "100%", maxWidth: 380 }}>
         <div className="display-md" style={{ marginBottom: 4 }}>
-          Lead Engine
+          Lead Finder
         </div>
         <p className="label" style={{ marginBottom: 20 }}>
           Sign in to continue
