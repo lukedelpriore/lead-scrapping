@@ -46,8 +46,9 @@ const accountSchema = z
     export_credit_balance: z.number().optional(),
     person_exports_remaining: z.number().optional(),
     company_exports_remaining: z.number().optional(),
-    // Rate limits when present.
-    rate_limits: z.record(z.unknown()).optional(),
+    // Rate limits when present. The live API returns this as an array on some
+    // plans and an object on others, so accept either shape.
+    rate_limits: z.union([z.array(z.unknown()), z.record(z.unknown())]).optional(),
   })
   .passthrough();
 
